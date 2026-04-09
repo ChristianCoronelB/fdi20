@@ -39,7 +39,7 @@ interface User {
   id: string;
   email: string;
   name: string;
-  role: 'ADMIN' | 'ORGANIZER' | 'MODERATOR' | 'PARTICIPANT';
+  role: 'ADMIN' | 'ORGANIZER' | 'MODERATOR' | 'EVALUATOR' | 'PARTICIPANT';
   avatar?: string;
   points: number;
   level: number;
@@ -90,8 +90,35 @@ interface Project {
   image?: string;
   totalVotes: number;
   averageScore?: number;
+  averageEvaluation?: number;
+  evaluationCount?: number;
   status: string;
   rank?: number;
+}
+
+interface Evaluation {
+  id: string;
+  userId: string;
+  projectId: string;
+  innovation: number;
+  innovationComment?: string;
+  viability: number;
+  viabilityComment?: string;
+  impact: number;
+  impactComment?: string;
+  presentation: number;
+  presentationComment?: string;
+  scalability: number;
+  scalabilityComment?: string;
+  execution: number;
+  executionComment?: string;
+  totalScore: number;
+  generalComment?: string;
+  status: string;
+  submittedAt?: string;
+  createdAt: string;
+  project?: Project;
+  user?: { id: string; name: string; email: string };
 }
 
 interface DashboardStats {
@@ -330,6 +357,7 @@ const getRoleLabel = (role: string) => {
     ADMIN: 'Administrador',
     ORGANIZER: 'Organizador',
     MODERATOR: 'Moderador',
+    EVALUATOR: 'Evaluador',
     PARTICIPANT: 'Participante',
   };
   return labels[role] || role;
@@ -340,6 +368,7 @@ const getRoleColor = (role: string) => {
     ADMIN: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300',
     ORGANIZER: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
     MODERATOR: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+    EVALUATOR: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300',
     PARTICIPANT: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300',
   };
   return colors[role] || 'bg-gray-100 text-gray-800';
@@ -1516,6 +1545,39 @@ export default function FabricaDeIdeasApp() {
   const [totalPointsToday, setTotalPointsToday] = useState(0);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
+  // Evaluation states (for EVALUATOR role)
+  const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
+  const [selectedProjectForEvaluation, setSelectedProjectForEvaluation] = useState<Project | null>(null);
+  const [evaluationDialogOpen, setEvaluationDialogOpen] = useState(false);
+  const [evaluationForm, setEvaluationForm] = useState({
+    innovation: 0,
+    innovationComment: '',
+    viability: 0,
+    viabilityComment: '',
+    impact: 0,
+    impactComment: '',
+    presentation: 0,
+    presentationComment: '',
+    scalability: 0,
+    scalabilityComment: '',
+    execution: 0,
+    executionComment: '',
+    generalComment: '',
+  });
+  const [savingEvaluation, setSavingEvaluation] = useState(false);
+  const [loadingEvaluations, setLoadingEvaluations] = useState(false);
+  const [evaluationFilter, setEvaluationFilter] = useState<'all' | 'pending' | 'completed'>('all');
+
+  // Evaluation criteria definitions
+  const evaluationCriteria = [
+    { key: 'innovation', label: 'Innovación y Creatividad', description: 'Originalidad de la idea, enfoque innovador y creatividad en la solución propuesta' },
+    { key: 'viability', label: 'Viabilidad del Negocio', description: 'Factibilidad comercial, modelo de negocio claro y potencial de rentabilidad' },
+    { key: 'impact', label: 'Impacto Social/Ambiental', description: 'Contribución positiva a la sociedad o medio ambiente, beneficios para la comunidad' },
+    { key: 'presentation', label: 'Presentación y Comunicación', description: 'Calidad del pitch, claridad en la exposición y capacidad de persuasión' },
+    { key: 'scalability', label: 'Potencial de Escalamiento', description: 'Capacidad de crecimiento, expansión a nuevos mercados y replicabilidad' },
+    { key: 'execution', label: 'Equipo y Ejecución', description: 'Competencia del equipo, capacidad de implementación y plan de acción concreto' },
+  ];
+
   // Handle edit room
   const handleEditRoom = (room: Room) => {
     setSelectedRoomForEdit(room);
@@ -2176,6 +2238,161 @@ export default function FabricaDeIdeasApp() {
       console.error('Error marking all as read:', error);
     }
   };
+
+  // ========== EVALUATION FUNCTIONS ==========
+
+  // Load user's evaluations
+  const loadUserEvaluations = async () => {
+    if (!user || user.role !== 'EVALUATOR') return;
+    
+    setLoadingEvaluations(true);
+    try {
+      const res = await fetch(`/api/evaluations?userId=${user.id}`);
+      const data = await res.json();
+
+      if (data.success) {
+        setEvaluations(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading evaluations:', error);
+    } finally {
+      setLoadingEvaluations(false);
+    }
+  };
+
+  // Open evaluation dialog for a project
+  const handleOpenEvaluationDialog = async (project: Project) => {
+    setSelectedProjectForEvaluation(project);
+    
+    // Check if there's an existing evaluation for this project
+    const existingEvaluation = evaluations.find(e => e.projectId === project.id);
+    
+    if (existingEvaluation) {
+      setEvaluationForm({
+        innovation: existingEvaluation.innovation,
+        innovationComment: existingEvaluation.innovationComment || '',
+        viability: existingEvaluation.viability,
+        viabilityComment: existingEvaluation.viabilityComment || '',
+        impact: existingEvaluation.impact,
+        impactComment: existingEvaluation.impactComment || '',
+        presentation: existingEvaluation.presentation,
+        presentationComment: existingEvaluation.presentationComment || '',
+        scalability: existingEvaluation.scalability,
+        scalabilityComment: existingEvaluation.scalabilityComment || '',
+        execution: existingEvaluation.execution,
+        executionComment: existingEvaluation.executionComment || '',
+        generalComment: existingEvaluation.generalComment || '',
+      });
+    } else {
+      // Reset form for new evaluation
+      setEvaluationForm({
+        innovation: 0,
+        innovationComment: '',
+        viability: 0,
+        viabilityComment: '',
+        impact: 0,
+        impactComment: '',
+        presentation: 0,
+        presentationComment: '',
+        scalability: 0,
+        scalabilityComment: '',
+        execution: 0,
+        executionComment: '',
+        generalComment: '',
+      });
+    }
+    
+    setEvaluationDialogOpen(true);
+  };
+
+  // Handle save evaluation (as draft)
+  const handleSaveEvaluation = async (submit: boolean = false) => {
+    if (!selectedProjectForEvaluation || !user) return;
+
+    // Validate that at least one criterion is scored
+    const hasScores = evaluationForm.innovation > 0 || 
+                      evaluationForm.viability > 0 || 
+                      evaluationForm.impact > 0 ||
+                      evaluationForm.presentation > 0 ||
+                      evaluationForm.scalability > 0 ||
+                      evaluationForm.execution > 0;
+
+    if (!hasScores && submit) {
+      toast.error('Debes calificar al menos un criterio antes de enviar');
+      return;
+    }
+
+    setSavingEvaluation(true);
+    try {
+      const res = await fetch('/api/evaluations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: selectedProjectForEvaluation.id,
+          ...evaluationForm,
+          status: submit ? 'SUBMITTED' : 'DRAFT'
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        // Update local evaluations state
+        setEvaluations(prev => {
+          const existing = prev.find(e => e.projectId === selectedProjectForEvaluation.id);
+          if (existing) {
+            return prev.map(e => e.projectId === selectedProjectForEvaluation.id ? data.data : e);
+          }
+          return [...prev, data.data];
+        });
+
+        toast.success(submit 
+          ? '¡Evaluación enviada correctamente!' 
+          : 'Borrador guardado'
+        );
+        setEvaluationDialogOpen(false);
+      } else {
+        toast.error(data.error || 'Error al guardar la evaluación');
+      }
+    } catch (error) {
+      console.error('Error saving evaluation:', error);
+      toast.error('Error al guardar la evaluación');
+    } finally {
+      setSavingEvaluation(false);
+    }
+  };
+
+  // Calculate evaluation progress
+  const getEvaluationProgress = (evaluation: Evaluation) => {
+    const criteria = ['innovation', 'viability', 'impact', 'presentation', 'scalability', 'execution'] as const;
+    const scored = criteria.filter(c => evaluation[c] > 0).length;
+    return Math.round((scored / criteria.length) * 100);
+  };
+
+  // Get projects filtered by evaluation status
+  const getFilteredProjectsForEvaluation = () => {
+    if (!user || user.role !== 'EVALUATOR') return [];
+
+    const evaluatedProjectIds = evaluations
+      .filter(e => e.status === 'SUBMITTED')
+      .map(e => e.projectId);
+
+    if (evaluationFilter === 'pending') {
+      return projects.filter(p => !evaluatedProjectIds.includes(p.id) && p.status === 'APPROVED');
+    } else if (evaluationFilter === 'completed') {
+      return projects.filter(p => evaluatedProjectIds.includes(p.id));
+    }
+    
+    // Show all approved projects
+    return projects.filter(p => p.status === 'APPROVED');
+  };
+
+  // Load evaluations when user is evaluator
+  useEffect(() => {
+    if (user && user.role === 'EVALUATOR') {
+      loadUserEvaluations();
+    }
+  }, [user]);
 
   // Load notifications on mount
   useEffect(() => {
@@ -3334,6 +3551,20 @@ export default function FabricaDeIdeasApp() {
                     <Award className="w-5 h-5" />
                     Logros
                   </Button>
+                  {/* Evaluation tab - only for EVALUATOR role */}
+                  {user?.role === 'EVALUATOR' && (
+                    <>
+                      <Separator className="my-3" />
+                      <Button
+                        variant={activeTab === 'evaluation' ? 'secondary' : 'ghost'}
+                        className="w-full justify-start gap-3"
+                        onClick={() => setActiveTab('evaluation')}
+                      >
+                        <Star className="w-5 h-5" />
+                        Evaluación
+                      </Button>
+                    </>
+                  )}
                 </>
               )}
             </nav>
@@ -8501,6 +8732,412 @@ export default function FabricaDeIdeasApp() {
                     )}
                   </div>
                 )}
+
+                {/* Evaluation Module - Only for EVALUATOR role */}
+                {activeTab === 'evaluation' && user?.role === 'EVALUATOR' && (
+                  <div className="space-y-6">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                      <div>
+                        <h1 className="text-2xl md:text-3xl font-bold flex items-center gap-2">
+                          <Star className="w-7 h-7 text-amber-500" />
+                          Evaluación de Proyectos
+                        </h1>
+                        <p className="text-sm md:text-base text-muted-foreground">
+                          Califica los proyectos de emprendimiento e innovación
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Select 
+                          value={evaluationFilter} 
+                          onValueChange={(value: 'all' | 'pending' | 'completed') => setEvaluationFilter(value)}
+                        >
+                          <SelectTrigger className="w-[180px]">
+                            <SelectValue placeholder="Filtrar proyectos" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="all">Todos los proyectos</SelectItem>
+                            <SelectItem value="pending">Pendientes</SelectItem>
+                            <SelectItem value="completed">Evaluados</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+
+                    {/* Evaluation Stats */}
+                    <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+                      <Card className="bg-gradient-to-br from-amber-500 to-orange-600 text-white">
+                        <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
+                          <div className="flex items-center gap-2 md:gap-4">
+                            <Lightbulb className="w-6 h-6 md:w-8 md:h-8" />
+                            <div>
+                              <p className="text-xs md:text-sm opacity-90">Total Proyectos</p>
+                              <p className="text-xl md:text-3xl font-bold">{projects.filter(p => p.status === 'APPROVED').length}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
+                          <div className="flex items-center gap-2 md:gap-4">
+                            <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-emerald-500" />
+                            <div>
+                              <p className="text-xs md:text-sm text-muted-foreground">Evaluados</p>
+                              <p className="text-xl md:text-3xl font-bold">{evaluations.filter(e => e.status === 'SUBMITTED').length}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
+                          <div className="flex items-center gap-2 md:gap-4">
+                            <Clock className="w-6 h-6 md:w-8 md:h-8 text-blue-500" />
+                            <div>
+                              <p className="text-xs md:text-sm text-muted-foreground">Pendientes</p>
+                              <p className="text-xl md:text-3xl font-bold">
+                                {projects.filter(p => p.status === 'APPROVED').length - evaluations.filter(e => e.status === 'SUBMITTED').length}
+                              </p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card>
+                        <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
+                          <div className="flex items-center gap-2 md:gap-4">
+                            <FileText className="w-6 h-6 md:w-8 md:h-8 text-purple-500" />
+                            <div>
+                              <p className="text-xs md:text-sm text-muted-foreground">Borradores</p>
+                              <p className="text-xl md:text-3xl font-bold">{evaluations.filter(e => e.status === 'DRAFT').length}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Criteria Description Card */}
+                    <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20">
+                      <CardHeader className="pb-2">
+                        <CardTitle className="text-base md:text-lg flex items-center gap-2">
+                          <Target className="w-5 h-5 text-amber-500" />
+                          Criterios de Evaluación
+                        </CardTitle>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid gap-2 md:grid-cols-2 lg:grid-cols-3 text-sm">
+                          {evaluationCriteria.map(c => (
+                            <div key={c.key} className="flex items-start gap-2">
+                              <div className="w-2 h-2 mt-1.5 rounded-full bg-amber-500 flex-shrink-0" />
+                              <div>
+                                <span className="font-medium">{c.label}</span>
+                                <p className="text-xs text-muted-foreground hidden md:block">{c.description}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Projects List for Evaluation */}
+                    <div className="grid gap-4">
+                      {loadingEvaluations ? (
+                        <Card>
+                          <CardContent className="py-8 text-center">
+                            <RefreshCw className="w-8 h-8 mx-auto animate-spin text-muted-foreground" />
+                            <p className="mt-2 text-muted-foreground">Cargando proyectos...</p>
+                          </CardContent>
+                        </Card>
+                      ) : getFilteredProjectsForEvaluation().length === 0 ? (
+                        <Card>
+                          <CardContent className="py-8 text-center">
+                            <Lightbulb className="w-12 h-12 mx-auto text-muted-foreground opacity-50" />
+                            <p className="mt-2 text-muted-foreground">
+                              {evaluationFilter === 'pending' 
+                                ? 'No tienes proyectos pendientes de evaluación'
+                                : evaluationFilter === 'completed'
+                                ? 'No has evaluado ningún proyecto aún'
+                                : 'No hay proyectos disponibles para evaluar'}
+                            </p>
+                          </CardContent>
+                        </Card>
+                      ) : (
+                        getFilteredProjectsForEvaluation().map((project) => {
+                          const existingEvaluation = evaluations.find(e => e.projectId === project.id);
+                          const isSubmitted = existingEvaluation?.status === 'SUBMITTED';
+                          const progress = existingEvaluation ? getEvaluationProgress(existingEvaluation) : 0;
+                          
+                          return (
+                            <motion.div
+                              key={project.id}
+                              initial={{ opacity: 0, y: 10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                            >
+                              <Card className={cn(
+                                "hover:shadow-lg transition-all cursor-pointer",
+                                isSubmitted && "border-emerald-200 dark:border-emerald-800 bg-emerald-50/30 dark:bg-emerald-950/20"
+                              )}>
+                                <CardContent className="p-4 md:p-6">
+                                  <div className="flex flex-col md:flex-row md:items-start gap-4">
+                                    {/* Project Image or Placeholder */}
+                                    <div className="w-16 h-16 md:w-20 md:h-20 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center flex-shrink-0">
+                                      {project.image ? (
+                                        <img src={project.image} alt={project.name} className="w-full h-full object-cover rounded-lg" />
+                                      ) : (
+                                        <Lightbulb className="w-8 h-8 text-white" />
+                                      )}
+                                    </div>
+
+                                    {/* Project Info */}
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
+                                        <div>
+                                          <div className="flex items-center gap-2 flex-wrap">
+                                            <h3 className="text-lg font-bold truncate">{project.name}</h3>
+                                            {isSubmitted && (
+                                              <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300">
+                                                <Check className="w-3 h-3 mr-1" />
+                                                Evaluado
+                                              </Badge>
+                                            )}
+                                            {existingEvaluation?.status === 'DRAFT' && (
+                                              <Badge variant="outline" className="border-amber-300 text-amber-700">
+                                                <FileText className="w-3 h-3 mr-1" />
+                                                Borrador
+                                              </Badge>
+                                            )}
+                                          </div>
+                                          <p className="text-sm text-muted-foreground">Equipo: {project.team}</p>
+                                        </div>
+                                      </div>
+                                      
+                                      {project.description && (
+                                        <p className="text-sm text-muted-foreground mt-2 line-clamp-2">{project.description}</p>
+                                      )}
+                                      
+                                      <div className="flex flex-wrap items-center gap-3 mt-3">
+                                        {project.category && (
+                                          <Badge variant="secondary">{project.category}</Badge>
+                                        )}
+                                        
+                                        {/* Show evaluation score if submitted */}
+                                        {isSubmitted && existingEvaluation && (
+                                          <div className="flex items-center gap-2 text-sm">
+                                            <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
+                                            <span className="font-medium">{existingEvaluation.totalScore.toFixed(1)}/10</span>
+                                          </div>
+                                        )}
+                                        
+                                        {/* Show progress bar for drafts */}
+                                        {existingEvaluation?.status === 'DRAFT' && (
+                                          <div className="flex items-center gap-2 flex-1 max-w-[200px]">
+                                            <Progress value={progress} className="h-2 flex-1" />
+                                            <span className="text-xs text-muted-foreground">{progress}%</span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    </div>
+
+                                    {/* Action Button */}
+                                    <Button
+                                      className={cn(
+                                        "w-full md:w-auto",
+                                        isSubmitted 
+                                          ? "bg-emerald-500 hover:bg-emerald-600" 
+                                          : "bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
+                                      )}
+                                      onClick={() => handleOpenEvaluationDialog(project)}
+                                    >
+                                      {isSubmitted ? (
+                                        <>
+                                          <Eye className="w-4 h-4 mr-2" />
+                                          Ver Evaluación
+                                        </>
+                                      ) : existingEvaluation?.status === 'DRAFT' ? (
+                                        <>
+                                          <Edit className="w-4 h-4 mr-2" />
+                                          Continuar
+                                        </>
+                                      ) : (
+                                        <>
+                                          <Star className="w-4 h-4 mr-2" />
+                                          Evaluar
+                                        </>
+                                      )}
+                                    </Button>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            </motion.div>
+                          );
+                        })
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* Evaluation Dialog */}
+                <Dialog open={evaluationDialogOpen} onOpenChange={setEvaluationDialogOpen}>
+                  <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+                    <DialogHeader>
+                      <DialogTitle className="flex items-center gap-2 text-lg md:text-xl">
+                        <Star className="w-5 h-5 text-amber-500" />
+                        Evaluación de Proyecto
+                      </DialogTitle>
+                      <DialogDescription>
+                        {selectedProjectForEvaluation?.name} - {selectedProjectForEvaluation?.team}
+                      </DialogDescription>
+                    </DialogHeader>
+                    
+                    <div className="space-y-6 py-4">
+                      {/* Project Description */}
+                      {selectedProjectForEvaluation?.description && (
+                        <Alert>
+                          <Lightbulb className="h-4 w-4" />
+                          <AlertTitle>Descripción del Proyecto</AlertTitle>
+                          <AlertDescription>{selectedProjectForEvaluation.description}</AlertDescription>
+                        </Alert>
+                      )}
+
+                      {/* Evaluation Criteria */}
+                      {evaluationCriteria.map((criterion) => (
+                        <div key={criterion.key} className="space-y-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                            <div>
+                              <Label className="text-base font-semibold">{criterion.label}</Label>
+                              <p className="text-xs text-muted-foreground">{criterion.description}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <div className="flex items-center gap-1">
+                                {[...Array(10)].map((_, i) => (
+                                  <button
+                                    key={i}
+                                    type="button"
+                                    onClick={() => setEvaluationForm(prev => ({
+                                      ...prev,
+                                      [criterion.key]: i + 1
+                                    }))}
+                                    className="p-0.5 transition-transform hover:scale-110"
+                                  >
+                                    <div 
+                                      className={cn(
+                                        "w-5 h-5 md:w-6 md:h-6 rounded-sm transition-colors",
+                                        i < evaluationForm[criterion.key as keyof typeof evaluationForm] as number
+                                          ? "bg-amber-500"
+                                          : "bg-gray-200 dark:bg-gray-700"
+                                      )}
+                                    />
+                                  </button>
+                                ))}
+                              </div>
+                              <span className="text-lg font-bold w-8 text-center">
+                                {evaluationForm[criterion.key as keyof typeof evaluationForm] || 0}
+                              </span>
+                            </div>
+                          </div>
+                          <Textarea
+                            placeholder={`Comentario sobre ${criterion.label.toLowerCase()} (opcional)`}
+                            value={evaluationForm[`${criterion.key}Comment` as keyof typeof evaluationForm] as string}
+                            onChange={(e) => setEvaluationForm(prev => ({
+                              ...prev,
+                              [`${criterion.key}Comment`]: e.target.value
+                            }))}
+                            rows={2}
+                            className="text-sm"
+                          />
+                        </div>
+                      ))}
+
+                      {/* General Comment */}
+                      <div className="space-y-2 pt-4 border-t">
+                        <Label className="text-base font-semibold">Comentario General</Label>
+                        <Textarea
+                          placeholder="Agrega un comentario general sobre el proyecto..."
+                          value={evaluationForm.generalComment}
+                          onChange={(e) => setEvaluationForm(prev => ({
+                            ...prev,
+                            generalComment: e.target.value
+                          }))}
+                          rows={3}
+                        />
+                      </div>
+
+                      {/* Current Score Summary */}
+                      {(() => {
+                        const scores = [
+                          evaluationForm.innovation,
+                          evaluationForm.viability,
+                          evaluationForm.impact,
+                          evaluationForm.presentation,
+                          evaluationForm.scalability,
+                          evaluationForm.execution
+                        ].filter(s => s > 0);
+                        const avg = scores.length > 0 
+                          ? scores.reduce((a, b) => a + b, 0) / scores.length 
+                          : 0;
+                        
+                        return (
+                          <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-4">
+                            <div className="flex items-center justify-between">
+                              <span className="font-medium">Puntaje Promedio</span>
+                              <div className="flex items-center gap-2">
+                                <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+                                <span className="text-2xl font-bold text-amber-600">
+                                  {avg.toFixed(1)}/10
+                                </span>
+                              </div>
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Basado en {scores.length} de 6 criterios evaluados
+                            </p>
+                          </div>
+                        );
+                      })()}
+                    </div>
+
+                    <DialogFooter className="flex-col sm:flex-row gap-2">
+                      <Button 
+                        variant="outline" 
+                        onClick={() => setEvaluationDialogOpen(false)}
+                        className="w-full sm:w-auto"
+                      >
+                        Cancelar
+                      </Button>
+                      <Button 
+                        variant="secondary"
+                        onClick={() => handleSaveEvaluation(false)}
+                        disabled={savingEvaluation}
+                        className="w-full sm:w-auto"
+                      >
+                        {savingEvaluation ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            Guardando...
+                          </>
+                        ) : (
+                          <>
+                            <FileText className="w-4 h-4 mr-2" />
+                            Guardar Borrador
+                          </>
+                        )}
+                      </Button>
+                      <Button 
+                        className="w-full sm:w-auto bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
+                        onClick={() => handleSaveEvaluation(true)}
+                        disabled={savingEvaluation}
+                      >
+                        {savingEvaluation ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                            Enviando...
+                          </>
+                        ) : (
+                          <>
+                            <Send className="w-4 h-4 mr-2" />
+                            Enviar Evaluación
+                          </>
+                        )}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </motion.div>
             )}
           </AnimatePresence>
