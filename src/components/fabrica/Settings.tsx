@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable react-hooks/set-state-in-effect */
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Award, Lock, Bell, Globe, Moon, Sun, User } from 'lucide-react';
 import { useTheme } from 'next-themes';
@@ -20,6 +22,11 @@ interface SettingsProps {
 
 export function Settings({ user, onUpdateUser }: SettingsProps) {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   return (
     <motion.div
@@ -27,6 +34,7 @@ export function Settings({ user, onUpdateUser }: SettingsProps) {
       animate={{ opacity: 1 }}
       className="space-y-6"
     >
+
       <div>
         <h2 className="text-2xl font-bold flex items-center gap-2">
           <User className="w-6 h-6 text-emerald-500" />
@@ -86,14 +94,14 @@ export function Settings({ user, onUpdateUser }: SettingsProps) {
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
+              {mounted && theme === 'dark' ? <Moon className="w-5 h-5" /> : <Sun className="w-5 h-5" />}
               <div>
                 <p className="font-medium">Tema Oscuro</p>
                 <p className="text-sm text-gray-500">Cambia la apariencia de la aplicación</p>
               </div>
             </div>
             <Switch
-              checked={theme === 'dark'}
+              checked={mounted && theme === 'dark'}
               onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
             />
           </div>

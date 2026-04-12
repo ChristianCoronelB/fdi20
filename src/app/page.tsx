@@ -5,7 +5,7 @@ import { motion } from 'framer-motion';
 import { Menu, Sparkles } from 'lucide-react';
 import { toast, Toaster } from 'sonner';
 import { Button } from '@/components/ui/button';
-import { ThemeProvider } from 'next-themes';
+import { ThemeProvider } from '@/components/ThemeProvider';
 
 import {
   LoginScreen,

@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable react-hooks/set-state-in-effect */
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import {
   LayoutDashboard, Calendar, Lightbulb, Award, QrCode, Vote,
@@ -35,6 +37,17 @@ const menuItems = [
 
 export function Sidebar({ user, activeTab, setActiveTab, sidebarOpen, setSidebarOpen, onLogout }: SidebarProps) {
   const { theme, setTheme } = useTheme();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  const toggleTheme = () => {
+    if (mounted) {
+      setTheme(theme === 'dark' ? 'light' : 'dark');
+    }
+  };
 
   return (
     <>
@@ -135,10 +148,10 @@ export function Sidebar({ user, activeTab, setActiveTab, sidebarOpen, setSidebar
           <Button
             variant="ghost"
             className="w-full justify-start"
-            onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            onClick={toggleTheme}
           >
-            {theme === 'dark' ? <Sun className="w-5 h-5 mr-3" /> : <Moon className="w-5 h-5 mr-3" />}
-            {theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}
+            {mounted && theme === 'dark' ? <Sun className="w-5 h-5 mr-3" /> : <Moon className="w-5 h-5 mr-3" />}
+            {mounted && theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}
           </Button>
           <Button
             variant="ghost"
