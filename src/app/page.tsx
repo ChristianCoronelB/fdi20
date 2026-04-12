@@ -52,6 +52,7 @@ interface Event {
   startDate: string;
   endDate: string;
   location?: string;
+  address?: string;
   isActive: boolean;
   _count?: { rooms: number; activities: number; projects: number };
 }
@@ -94,6 +95,15 @@ interface Project {
   evaluationCount?: number;
   status: string;
   rank?: number;
+  // Additional fields for project details
+  leaderName?: string;
+  leaderEmail?: string;
+  leaderPhone?: string;
+  institution?: string;
+  course?: string;
+  tutorName?: string;
+  area?: string;
+  projectCategory?: string;
 }
 
 interface Evaluation {
@@ -1701,7 +1711,7 @@ export default function FabricaDeIdeasApp() {
   // Handle new room
   const handleNewRoom = () => {
     setSelectedRoomForEdit(null);
-    setRoomForm({ name: '', capacity: '', building: '', floor: '', color: '#3B82F6' });
+    setRoomForm({ name: '', capacity: '', building: '', floor: '', color: '#3B82F6', latitude: '', longitude: '' });
     setEditRoomDialogOpen(true);
   };
 
@@ -9019,7 +9029,7 @@ export default function FabricaDeIdeasApp() {
                                     <div 
                                       className={cn(
                                         "w-5 h-5 md:w-6 md:h-6 rounded-sm transition-colors",
-                                        i < evaluationForm[criterion.key as keyof typeof evaluationForm] as number
+                                        i < (evaluationForm[criterion.key as keyof typeof evaluationForm] as number)
                                           ? "bg-amber-500"
                                           : "bg-gray-200 dark:bg-gray-700"
                                       )}

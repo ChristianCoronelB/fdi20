@@ -49,6 +49,17 @@ export async function getSession(): Promise<JWTPayload | null> {
   return verifyToken(token);
 }
 
+export async function getCurrentUser(): Promise<User | null> {
+  const session = await getSession();
+  if (!session) return null;
+  
+  const user = await db.user.findUnique({
+    where: { id: session.userId },
+  });
+  
+  return user;
+}
+
 export async function setSession(token: string) {
   const cookieStore = await cookies();
   cookieStore.set('auth-token', token, {
@@ -127,13 +138,14 @@ export async function register(data: {
 
 export function hasRole(userRole: UserRole, allowedRoles: UserRole[]): boolean {
   const roleHierarchy: Record<UserRole, number> = {
-    ADMIN: 4,
-    ORGANIZER: 3,
+    ADMIN: 5,
+    ORGANIZER: 4,
+    EVALUATOR: 3,
     MODERATOR: 2,
     PARTICIPANT: 1,
   };
   
-  return allowedRoles.some(role => roleHierarchy[userRole] >= roleHierarchy[role]);
+  return allowedRoles.some(role => (roleHierarchy[userRole] ?? 0) >= (roleHierarchy[role] ?? 0));
 }
 
 export function isAdmin(role: UserRole): boolean {
@@ -146,4 +158,8 @@ export function isOrganizer(role: UserRole): boolean {
 
 export function isModerator(role: UserRole): boolean {
   return role === 'MODERATOR' || role === 'ORGANIZER' || role === 'ADMIN';
+}
+
+export function isEvaluator(role: UserRole): boolean {
+  return role === 'EVALUATOR' || role === 'ORGANIZER' || role === 'ADMIN';
 }
