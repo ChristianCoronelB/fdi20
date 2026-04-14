@@ -3,12 +3,11 @@ import path from 'path';
 
 const PORT = 3000;
 
-console.log(`[nextjs-service] Starting Next.js on port ${PORT}...`);
+console.log(`[fabrica-service] Starting Fábrica de Ideas on port ${PORT}...`);
 
-const nextProcess = spawn('node', [
-    path.join(__dirname, '..', 'node_modules', '.bin', 'next'),
-    'dev',
-    '-p', String(PORT)
+const nextProcess = spawn('bun', [
+    'run',
+    'dev'
 ], {
     cwd: path.join(__dirname, '..'),
     stdio: 'inherit',
@@ -16,14 +15,13 @@ const nextProcess = spawn('node', [
 });
 
 nextProcess.on('error', (err) => {
-    console.error('[nextjs-service] Error:', err);
+    console.error('[fabrica-service] Error:', err);
 });
 
 nextProcess.on('exit', (code) => {
-    console.log(`[nextjs-service] Process exited with code ${code}`);
+    console.log(`[fabrica-service] Process exited with code ${code}`);
 });
 
-// Keep the service running
 process.on('SIGTERM', () => {
     nextProcess.kill('SIGTERM');
     process.exit(0);

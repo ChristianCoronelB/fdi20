@@ -1,5 +1,8 @@
 {
     "name": "nextjs-mini-service",
     "version": "1.0.0",
-    "type": "module"
+    "type": "module",
+    "scripts": {
+        "dev": "bun --hot index.ts"
+    }
 }
