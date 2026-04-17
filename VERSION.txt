@@ -1,0 +1,23 @@
+Fábrica de Ideas - Plataforma de Gestión de Eventos
+Versión: v1.0.0-20260417-213128
+Fecha: Fri Apr 17 21:31:28 UTC 2026
+Autor: Z.ai Code
+
+Características:
+- Dashboard con estadísticas
+- Gestión de usuarios (CRUD completo)
+- Gestión de eventos
+- Gestión de actividades
+- Gestión de proyectos
+- Sistema de evaluaciones
+- Sistema de votación
+- Escáner QR
+- Sistema de logros y gamificación
+- Certificados
+- API REST completa
+
+Credenciales de prueba:
+- Admin: admin@fabricadeideas.com / admin123
+- Organizador: organizer@fabricadeideas.com / org123
+- Moderador: moderator@fabricadeideas.com / mod123
+- Participante: user1@fabricadeideas.com / user123

@@ -1,9 +1,0 @@
-Fri Apr 17 19:54:20 UTC 2026: Iniciando servidor...
-▲ Next.js 16.1.3 (Turbopack)
-- Local:         http://localhost:3000
-- Network:       http://21.0.16.218:3000
-- Environments: .env
-
-✓ Starting...
-✓ Ready in 569ms
- GET / 200 in 1181ms (compile: 1011ms, render: 171ms)
