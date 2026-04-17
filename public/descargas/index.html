@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fábrica de Ideas - Descargas</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #10b981 0%, #0d9488 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .container {
+            background: white;
+            border-radius: 24px;
+            padding: 48px;
+            max-width: 600px;
+            width: 100%;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            text-align: center;
+        }
+        .logo {
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #10b981, #0d9488);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 24px;
+        }
+        .logo svg {
+            width: 40px;
+            height: 40px;
+            fill: white;
+        }
+        h1 {
+            color: #1f2937;
+            font-size: 28px;
+            margin-bottom: 8px;
+        }
+        .version {
+            color: #10b981;
+            font-weight: 600;
+            font-size: 14px;
+            margin-bottom: 24px;
+        }
+        .features {
+            text-align: left;
+            background: #f9fafb;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 32px;
+        }
+        .features h3 {
+            color: #374151;
+            font-size: 14px;
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .features ul {
+            list-style: none;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+        }
+        .features li {
+            color: #4b5563;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .features li::before {
+            content: "✓";
+            color: #10b981;
+            font-weight: bold;
+        }
+        .download-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 12px;
+            background: linear-gradient(135deg, #10b981 0%, #0d9488 100%);
+            color: white;
+            padding: 16px 32px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 18px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        .download-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px -5px rgba(16, 185, 129, 0.5);
+        }
+        .download-btn svg {
+            width: 24px;
+            height: 24px;
+        }
+        .info {
+            margin-top: 24px;
+            color: #6b7280;
+            font-size: 13px;
+        }
+        .credentials {
+            margin-top: 24px;
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: left;
+        }
+        .credentials h4 {
+            color: #374151;
+            font-size: 13px;
+            margin-bottom: 12px;
+        }
+        .credentials table {
+            width: 100%;
+            font-size: 13px;
+        }
+        .credentials td {
+            padding: 4px 0;
+            color: #4b5563;
+        }
+        .credentials td:last-child {
+            color: #10b981;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="logo">
+            <svg viewBox="0 0 24 24" fill="currentColor">
+                <path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/>
+            </svg>
+        </div>
+        <h1>Fábrica de Ideas</h1>
+        <div class="version">Versión v1.0.0 - Abril 2026</div>
+        
+        <div class="features">
+            <h3>Características incluidas</h3>
+            <ul>
+                <li>Dashboard estadísticas</li>
+                <li>Gestión usuarios CRUD</li>
+                <li>Gestión de eventos</li>
+                <li>Gestión actividades</li>
+                <li>Gestión proyectos</li>
+                <li>Sistema evaluaciones</li>
+                <li>Sistema votación</li>
+                <li>Escáner QR</li>
+                <li>Gamificación</li>
+                <li>Certificados</li>
+                <li>API REST</li>
+                <li>Multi-rol</li>
+            </ul>
+        </div>
+        
+        <a href="fabrica-de-ideas-descarga.zip" class="download-btn">
+            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+            </svg>
+            Descargar Aplicación
+        </a>
+        
+        <div class="info">
+            Archivo ZIP • ~654 KB • Listo para ejecutar con Bun/Node.js
+        </div>
+        
+        <div class="credentials">
+            <h4>Credenciales de prueba:</h4>
+            <table>
+                <tr><td>Admin:</td><td>admin@fabricadeideas.com / admin123</td></tr>
+                <tr><td>Organizador:</td><td>organizer@fabricadeideas.com / org123</td></tr>
+                <tr><td>Moderador:</td><td>moderator@fabricadeideas.com / mod123</td></tr>
+                <tr><td>Participante:</td><td>user1@fabricadeideas.com / user123</td></tr>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
