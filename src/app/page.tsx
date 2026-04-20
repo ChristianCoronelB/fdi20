@@ -1329,6 +1329,67 @@ export default function FabricaDeIdeasApp() {
     status: 'active',
   });
   const [savingUser, setSavingUser] = useState(false);
+  const [usersList, setUsersList] = useState<User[]>([]);
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [newUserDialogOpen, setNewUserDialogOpen] = useState(false);
+  const [newUserForm, setNewUserForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    role: 'PARTICIPANT',
+  });
+  const [creatingUser, setCreatingUser] = useState(false);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+
+  // Load users from API
+  const loadUsers = async (search?: string) => {
+    setLoadingUsers(true);
+    try {
+      const searchParam = search || userSearchQuery;
+      const url = searchParam ? `/api/users?search=${encodeURIComponent(searchParam)}` : '/api/users';
+      const res = await fetch(url);
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success) {
+          setUsersList(data.data || []);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading users:', error);
+    }
+    setLoadingUsers(false);
+  };
+
+  // Handle create new user
+  const handleCreateUser = async () => {
+    if (!newUserForm.name.trim() || !newUserForm.email.trim() || !newUserForm.password.trim()) {
+      toast.error('Todos los campos son requeridos');
+      return;
+    }
+
+    setCreatingUser(true);
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newUserForm),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setUsersList(prev => [...prev, data.data]);
+        setNewUserDialogOpen(false);
+        setNewUserForm({ name: '', email: '', password: '', role: 'PARTICIPANT' });
+        toast.success(`Usuario "${newUserForm.name}" creado exitosamente`);
+      } else {
+        toast.error(data.error || 'Error al crear usuario');
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      toast.error('Error al crear usuario');
+    }
+    setCreatingUser(false);
+  };
 
   // Handle edit user
   const handleEditUser = (entry: { name: string; points: number; level: number }, index: number) => {
@@ -1499,6 +1560,7 @@ export default function FabricaDeIdeasApp() {
   const [selectedProjectForVote, setSelectedProjectForVote] = useState<Project | null>(null);
   const [voteScore, setVoteScore] = useState(5);
   const [votingDialogOpen, setVotingDialogOpen] = useState(false);
+  const [projectAreaFilter, setProjectAreaFilter] = useState<string>('all');
 
   // Voting configuration states
   const [votingConfig, setVotingConfig] = useState<{
@@ -1674,6 +1736,54 @@ export default function FabricaDeIdeasApp() {
     const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}`;
     setRoomQrCode(qrUrl);
     setQrRoomDialogOpen(true);
+  };
+
+  // Handle copy QR code to clipboard
+  const handleCopyQR = async (qrUrl: string, name: string) => {
+    try {
+      // Fetch the image as a blob
+      const response = await fetch(qrUrl);
+      const blob = await response.blob();
+      
+      // Copy to clipboard
+      await navigator.clipboard.write([
+        new ClipboardItem({ 'image/png': blob })
+      ]);
+      
+      toast.success(`Código QR de "${name}" copiado al portapapeles`);
+    } catch (error) {
+      console.error('Error copying QR:', error);
+      // Fallback: copy the URL instead
+      try {
+        await navigator.clipboard.writeText(qrUrl);
+        toast.success('URL del código QR copiada al portapapeles');
+      } catch {
+        toast.error('No se pudo copiar el código QR');
+      }
+    }
+  };
+
+  // Handle download QR code as PNG
+  const handleDownloadQR = async (qrUrl: string, name: string) => {
+    try {
+      const response = await fetch(qrUrl);
+      const blob = await response.blob();
+      
+      // Create download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `qr-${name.toLowerCase().replace(/\s+/g, '-')}.png`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast.success(`Código QR de "${name}" descargado`);
+    } catch (error) {
+      console.error('Error downloading QR:', error);
+      toast.error('Error al descargar el código QR');
+    }
   };
 
   // Handle show room on map
@@ -1968,13 +2078,19 @@ export default function FabricaDeIdeasApp() {
           p.id === project.id ? { ...p, totalVotes: p.totalVotes + 1 } : p
         ));
         
+        // Update user points after voting
+        if (data.meta?.totalPoints !== undefined) {
+          setUser(prev => prev ? { ...prev, points: data.meta.totalPoints } : prev);
+        }
+        
         // Custom message based on vote type
+        const pointsEarned = data.meta?.pointsEarned || 0;
         if (votingConfig.voteType === 'LIKE') {
-          toast.success(`¡Votaste por "${project.name}"! Votos restantes: ${remaining}`);
+          toast.success(`¡Votaste por "${project.name}"! ${pointsEarned > 0 ? `+${pointsEarned} puntos. ` : ''}Votos restantes: ${remaining}`);
         } else if (votingConfig.voteType === 'STARS') {
-          toast.success(`¡Calificaste "${project.name}" con ${score} estrellas! Votos restantes: ${remaining}`);
+          toast.success(`¡Calificaste "${project.name}" con ${score} estrellas! ${pointsEarned > 0 ? `+${pointsEarned} puntos. ` : ''}Votos restantes: ${remaining}`);
         } else {
-          toast.success(`¡Asignaste ${score} puntos a "${project.name}"! Votos restantes: ${remaining}`);
+          toast.success(`¡Asignaste ${score} puntos a "${project.name}"! ${pointsEarned > 0 ? `+${pointsEarned} puntos. ` : ''}Votos restantes: ${remaining}`);
         }
       } else {
         toast.error(data.error || 'Error al votar');
@@ -2117,6 +2233,13 @@ export default function FabricaDeIdeasApp() {
       loadAllVotes();
     }
   }, [user, eventsList, activeTab]);
+
+  // Load users when users tab is active
+  useEffect(() => {
+    if (user && (user.role === 'ADMIN' || user.role === 'ORGANIZER') && activeTab === 'users') {
+      loadUsers();
+    }
+  }, [user, activeTab]);
 
   // ========== NOTIFICATION FUNCTIONS ==========
 
@@ -5708,9 +5831,24 @@ export default function FabricaDeIdeasApp() {
                       <div className="flex gap-2">
                         <div className="relative">
                           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                          <Input placeholder="Buscar usuarios..." className="pl-10 w-[250px]" />
+                          <Input 
+                            placeholder="Buscar usuarios..." 
+                            className="pl-10 w-[250px]" 
+                            value={userSearchQuery}
+                            onChange={(e) => {
+                              setUserSearchQuery(e.target.value);
+                              loadUsers(e.target.value);
+                            }}
+                          />
                         </div>
-                        <Button className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-600">
+                        <Button 
+                          className="gap-2 bg-gradient-to-r from-emerald-500 to-teal-600"
+                          onClick={() => setNewUserDialogOpen(true)}
+                        >
+                          <Plus className="w-4 h-4" />
+                          Nuevo Usuario
+                        </Button>
+                        <Button variant="outline" className="gap-2">
                           <Download className="w-4 h-4" />
                           Exportar
                         </Button>
@@ -5728,41 +5866,167 @@ export default function FabricaDeIdeasApp() {
                             <div>Estado</div>
                             <div>Acciones</div>
                           </div>
-                          {mockLeaderboard.map((entry, i) => (
-                            <div key={i} className="grid grid-cols-6 gap-4 p-4 border-t items-center">
-                              <div className="flex items-center gap-2">
-                                <Avatar className="w-8 h-8">
-                                  <AvatarFallback>{getInitials(entry.name)}</AvatarFallback>
-                                </Avatar>
-                                <span className="font-medium">{entry.name}</span>
-                              </div>
-                              <div className="text-muted-foreground">{entry.name.toLowerCase().replace(' ', '.')}@email.com</div>
-                              <div><Badge variant="outline">Participante</Badge></div>
-                              <div className="font-medium text-emerald-500">{entry.points}</div>
-                              <div><Badge className="bg-green-500">Activo</Badge></div>
-                              <div className="flex gap-1">
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon"
-                                  onClick={() => handleEditUser(entry, i)}
-                                  title="Editar usuario"
-                                >
-                                  <Edit className="w-4 h-4" />
-                                </Button>
-                                <Button 
-                                  variant="ghost" 
-                                  size="icon"
-                                  onClick={() => handleViewUser(entry, i)}
-                                  title="Ver detalles"
-                                >
-                                  <Eye className="w-4 h-4" />
-                                </Button>
-                              </div>
+                          {loadingUsers ? (
+                            <div className="p-8 text-center">
+                              <RefreshCw className="w-6 h-6 mx-auto animate-spin text-muted-foreground" />
+                              <p className="mt-2 text-muted-foreground">Cargando usuarios...</p>
                             </div>
-                          ))}
+                          ) : usersList.length > 0 ? (
+                            usersList.map((userItem, i) => (
+                              <div key={userItem.id || i} className="grid grid-cols-6 gap-4 p-4 border-t items-center">
+                                <div className="flex items-center gap-2">
+                                  <Avatar className="w-8 h-8">
+                                    <AvatarFallback>{getInitials(userItem.name)}</AvatarFallback>
+                                  </Avatar>
+                                  <span className="font-medium">{userItem.name}</span>
+                                </div>
+                                <div className="text-muted-foreground">{userItem.email}</div>
+                                <div><Badge className={getRoleColor(userItem.role)}>{getRoleLabel(userItem.role)}</Badge></div>
+                                <div className="font-medium text-emerald-500">{userItem.points}</div>
+                                <div><Badge className="bg-green-500">Activo</Badge></div>
+                                <div className="flex gap-1">
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    onClick={() => {
+                                      setSelectedUser({
+                                        id: userItem.id,
+                                        name: userItem.name,
+                                        email: userItem.email,
+                                        role: userItem.role,
+                                        points: userItem.points,
+                                        level: userItem.level,
+                                        status: 'active',
+                                      });
+                                      setEditUserForm({
+                                        name: userItem.name,
+                                        email: userItem.email,
+                                        role: userItem.role,
+                                        status: 'active',
+                                      });
+                                      setEditUserDialogOpen(true);
+                                    }}
+                                    title="Editar usuario"
+                                  >
+                                    <Edit className="w-4 h-4" />
+                                  </Button>
+                                  <Button 
+                                    variant="ghost" 
+                                    size="icon"
+                                    onClick={() => {
+                                      setSelectedUser({
+                                        id: userItem.id,
+                                        name: userItem.name,
+                                        email: userItem.email,
+                                        role: userItem.role,
+                                        points: userItem.points,
+                                        level: userItem.level,
+                                        status: 'active',
+                                      });
+                                      setViewUserDialogOpen(true);
+                                    }}
+                                    title="Ver detalles"
+                                  >
+                                    <Eye className="w-4 h-4" />
+                                  </Button>
+                                </div>
+                              </div>
+                            ))
+                          ) : (
+                            <div className="p-8 text-center text-muted-foreground">
+                              <Users className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                              <p>No se encontraron usuarios</p>
+                            </div>
+                          )}
                         </div>
                       </CardContent>
                     </Card>
+
+                    {/* New User Dialog */}
+                    <Dialog open={newUserDialogOpen} onOpenChange={setNewUserDialogOpen}>
+                      <DialogContent className="max-w-md">
+                        <DialogHeader>
+                          <DialogTitle className="flex items-center gap-2">
+                            <Plus className="w-5 h-5" />
+                            Nuevo Usuario
+                          </DialogTitle>
+                          <DialogDescription>
+                            Crea un nuevo usuario para el evento
+                          </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                          <div className="grid gap-2">
+                            <Label htmlFor="new-name">Nombre</Label>
+                            <Input 
+                              id="new-name" 
+                              value={newUserForm.name}
+                              onChange={(e) => setNewUserForm(prev => ({ ...prev, name: e.target.value }))}
+                              placeholder="Nombre completo"
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="new-email">Email</Label>
+                            <Input 
+                              id="new-email" 
+                              type="email"
+                              value={newUserForm.email}
+                              onChange={(e) => setNewUserForm(prev => ({ ...prev, email: e.target.value }))}
+                              placeholder="correo@ejemplo.com"
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="new-password">Contraseña</Label>
+                            <Input 
+                              id="new-password" 
+                              type="password"
+                              value={newUserForm.password}
+                              onChange={(e) => setNewUserForm(prev => ({ ...prev, password: e.target.value }))}
+                              placeholder="••••••••"
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="new-role">Rol</Label>
+                            <Select 
+                              value={newUserForm.role}
+                              onValueChange={(value) => setNewUserForm(prev => ({ ...prev, role: value }))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="ADMIN">Administrador</SelectItem>
+                                <SelectItem value="ORGANIZER">Organizador</SelectItem>
+                                <SelectItem value="MODERATOR">Moderador</SelectItem>
+                                <SelectItem value="EVALUATOR">Evaluador</SelectItem>
+                                <SelectItem value="PARTICIPANT">Participante</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => setNewUserDialogOpen(false)}>
+                            Cancelar
+                          </Button>
+                          <Button 
+                            className="bg-gradient-to-r from-emerald-500 to-teal-600"
+                            onClick={handleCreateUser}
+                            disabled={creatingUser}
+                          >
+                            {creatingUser ? (
+                              <>
+                                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                Creando...
+                              </>
+                            ) : (
+                              <>
+                                <Plus className="w-4 h-4 mr-2" />
+                                Crear Usuario
+                              </>
+                            )}
+                          </Button>
+                        </DialogFooter>
+                      </DialogContent>
+                    </Dialog>
 
                     {/* Edit User Dialog */}
                     <Dialog open={editUserDialogOpen} onOpenChange={setEditUserDialogOpen}>
@@ -5807,6 +6071,7 @@ export default function FabricaDeIdeasApp() {
                                 <SelectItem value="ADMIN">Administrador</SelectItem>
                                 <SelectItem value="ORGANIZER">Organizador</SelectItem>
                                 <SelectItem value="MODERATOR">Moderador</SelectItem>
+                                <SelectItem value="EVALUATOR">Evaluador</SelectItem>
                                 <SelectItem value="PARTICIPANT">Participante</SelectItem>
                               </SelectContent>
                             </Select>
@@ -6022,31 +6287,50 @@ export default function FabricaDeIdeasApp() {
                     </div>
 
                     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                      {rooms.map((room) => (
-                        <Card key={room.id}>
-                          <CardHeader className="pb-3">
-                            <CardTitle className="text-lg flex items-center gap-2">
-                              <Building className="w-5 h-5" />
-                              {room.name}
-                            </CardTitle>
-                          </CardHeader>
-                          <CardContent className="flex flex-col items-center gap-4">
-                            <div className="w-40 h-40 bg-white rounded-lg p-2 shadow-inner">
-                              <div className="w-full h-full bg-[url('data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIj48cmVjdCBmaWxsPSIjZmZmIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIvPjx0ZXh0IHg9IjUwIiB5PSI1MCIgZG9taW5hbnQtYmFzZWxpbmU9Im1pZGRsZSIgdGV4dC1hbmNob3I9Im1pZGRsZSIgZm9udC1mYW1pbHk9Im1vbm9zcGFjZSIgZm9udC1zaXplPSIxMCI+UVIgQ29kZTwvdGV4dD48L3N2Zz4=')] bg-contain bg-center bg-no-repeat" />
-                            </div>
-                            <div className="flex gap-2 w-full">
-                              <Button variant="outline" size="sm" className="flex-1">
-                                <Download className="w-4 h-4 mr-1" />
-                                Descargar
-                              </Button>
-                              <Button variant="outline" size="sm" className="flex-1">
-                                <Copy className="w-4 h-4 mr-1" />
-                                Copiar
-                              </Button>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      ))}
+                      {rooms.map((room) => {
+                        const qrData = `ROOM:${room.id}:${room.name}:${room.building || ''}:${room.floor || ''}`;
+                        const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(qrData)}`;
+                        
+                        return (
+                          <Card key={room.id}>
+                            <CardHeader className="pb-3">
+                              <CardTitle className="text-lg flex items-center gap-2">
+                                <Building className="w-5 h-5" />
+                                {room.name}
+                              </CardTitle>
+                            </CardHeader>
+                            <CardContent className="flex flex-col items-center gap-4">
+                              <div className="w-40 h-40 bg-white rounded-lg p-2 shadow-inner">
+                                <img 
+                                  src={qrUrl}
+                                  alt={`QR Code for ${room.name}`}
+                                  className="w-full h-full object-contain"
+                                />
+                              </div>
+                              <div className="flex gap-2 w-full">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="flex-1"
+                                  onClick={() => handleDownloadQR(qrUrl, room.name)}
+                                >
+                                  <Download className="w-4 h-4 mr-1" />
+                                  Descargar
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="flex-1"
+                                  onClick={() => handleCopyQR(qrUrl, room.name)}
+                                >
+                                  <Copy className="w-4 h-4 mr-1" />
+                                  Copiar
+                                </Button>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
@@ -7868,7 +8152,7 @@ export default function FabricaDeIdeasApp() {
                             </span>
                           </div>
                         )}
-                        <Select defaultValue="all">
+                        <Select value={projectAreaFilter} onValueChange={setProjectAreaFilter}>
                           <SelectTrigger className="w-[180px]">
                             <SelectValue placeholder="Área" />
                           </SelectTrigger>
@@ -7917,7 +8201,10 @@ export default function FabricaDeIdeasApp() {
                     )}
 
                     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                      {projects.filter(p => p.status === 'APPROVED' || p.status === 'FINALIST' || p.status === 'WINNER').map((project) => {
+                      {projects
+                        .filter(p => p.status === 'APPROVED' || p.status === 'FINALIST' || p.status === 'WINNER')
+                        .filter(p => projectAreaFilter === 'all' || p.area === projectAreaFilter)
+                        .map((project) => {
                         const hasVoted = userVotes.some(v => v.id === project.id);
                         const isVoting = votingProjectId === project.id;
                         

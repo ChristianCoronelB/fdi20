@@ -3,14 +3,17 @@ import { db } from '@/lib/db';
 import { getSession, isOrganizer } from '@/lib/auth';
 import { ProjectStatus } from '@prisma/client';
 
-// GET /api/projects - List projects (filter by eventId, status, category)
+// GET /api/projects - List projects (filter by eventId, status, category, area)
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const eventId = searchParams.get('eventId');
     const status = searchParams.get('status');
     const category = searchParams.get('category');
+    const area = searchParams.get('area');
+    const projectCategory = searchParams.get('projectCategory');
     const isActive = searchParams.get('isActive');
+    const search = searchParams.get('search');
     const limit = searchParams.get('limit');
     const offset = searchParams.get('offset');
 
@@ -28,8 +31,27 @@ export async function GET(request: NextRequest) {
       where.category = category;
     }
     
+    if (area) {
+      where.area = area;
+    }
+    
+    if (projectCategory) {
+      where.projectCategory = projectCategory;
+    }
+    
     if (isActive !== null) {
       where.isActive = isActive === 'true';
+    }
+    
+    // Search filter
+    if (search) {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { team: { contains: search, mode: 'insensitive' } },
+        { leaderName: { contains: search, mode: 'insensitive' } },
+        { institution: { contains: search, mode: 'insensitive' } },
+      ];
     }
 
     const projects = await db.project.findMany({
@@ -51,7 +73,7 @@ export async function GET(request: NextRequest) {
           },
         },
         _count: {
-          select: { votes: true },
+          select: { votes: true, evaluations: true },
         },
       },
       orderBy: [
@@ -114,12 +136,21 @@ export async function POST(request: NextRequest) {
       videoUrl,
       githubUrl,
       websiteUrl,
+      // New fields for Fábrica de Ideas
+      leaderName,
+      leaderEmail,
+      leaderPhone,
+      institution,
+      course,
+      tutorName,
+      area,
+      projectCategory,
       status,
     } = body;
 
-    if (!eventId || !name || !team) {
+    if (!eventId || !name) {
       return NextResponse.json(
-        { success: false, error: 'Event ID, name, and team are required' },
+        { success: false, error: 'Event ID y nombre son requeridos' },
         { status: 400 }
       );
     }
@@ -155,13 +186,22 @@ export async function POST(request: NextRequest) {
         eventId,
         roomId,
         name,
-        team: typeof team === 'object' ? JSON.stringify(team) : team,
+        team: typeof team === 'object' ? JSON.stringify(team) : team || '',
         category,
         description,
         image,
         videoUrl,
         githubUrl,
         websiteUrl,
+        // New fields
+        leaderName,
+        leaderEmail,
+        leaderPhone,
+        institution,
+        course,
+        tutorName,
+        area,
+        projectCategory,
         status: status || 'DRAFT',
       },
       include: {

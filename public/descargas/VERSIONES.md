@@ -1,44 +1,64 @@
-# Fábrica de Ideas - Descargas
+# Historial de Versiones - Fábrica de Ideas
 
-## Versión Actual: v1.0.0
+## v1.1.0 - 2026-04-18
 
-### Archivo de descarga
-- **Archivo:** `fabrica-de-ideas-descarga.zip`
-- **Tamaño:** ~654 KB
-- **Fecha:** Abril 2026
+### Nuevas Funcionalidades
+- **Módulo Usuarios**: Agregado botón "Nuevo Usuario" para crear usuarios
+- **Módulo Usuarios**: Búsqueda de usuarios funcional con filtrado en tiempo real
+- **Módulo Usuarios**: Rol "Evaluador" agregado a las opciones de rol
+- **Módulo Proyectos**: Campos adicionales para datos del proyecto (líder, institución, área, etc.)
+- **Módulo Proyectos Participante**: Filtro por área para proyectos
+- **Módulo Proyectos Participante**: Puntos ganados al votar (+5 puntos por voto)
 
-### Cómo instalar
+### Correcciones
+- **Módulo Actividades**: Corregido guardado de información del formulario
+- **Módulo Proyectos**: Corregido registro de todos los campos del formulario
+- **Módulo QR**: Funciones de copiar y descargar códigos QR funcionales
+- **Módulo Configuración**: Todas las opciones de notificación funcionales
 
-1. Descarga el archivo ZIP
-2. Descomprime en tu servidor local
-3. Ejecuta los siguientes comandos:
+### Mejoras Técnicas
+- API de proyectos actualizada con nuevos campos
+- API de usuarios con creación de usuarios
+- API de votos con sistema de puntos
+- Base de datos actualizada con nuevos campos
 
-```bash
-cd fabrica-de-ideas
-bun install
-bun run db:push
-bun run dev
-```
+---
 
-### Credenciales de prueba
+## v1.0.0 - 2026-04-17
 
-| Rol | Email | Contraseña |
-|-----|-------|------------|
-| Admin | admin@fabricadeideas.com | admin123 |
-| Organizador | organizer@fabricadeideas.com | org123 |
-| Moderador | moderator@fabricadeideas.com | mod123 |
-| Participante | user1@fabricadeideas.com | user123 |
+### Funcionalidades Iniciales
+- Dashboard con estadísticas
+- Gestión de eventos
+- Gestión de actividades
+- Gestión de proyectos
+- Sistema de votación
+- Escáner QR
+- Sistema de gamificación
+- Certificados
+- Mapas interactivos
 
-### Características incluidas
+### Roles de Usuario
+- Administrador
+- Organizador
+- Moderador
+- Evaluador
+- Participante
 
-✅ Dashboard con estadísticas
-✅ Gestión de usuarios (CRUD)
-✅ Gestión de eventos
-✅ Gestión de actividades
-✅ Gestión de proyectos
-✅ Sistema de evaluaciones
-✅ Sistema de votación
-✅ Escáner QR
-✅ Gamificación y logros
-✅ Certificados
-✅ API REST completa
+---
+
+## Cómo Actualizar
+
+1. Descarga la última versión
+2. Descomprime el archivo
+3. Ejecuta:
+   ```bash
+   npm install
+   npx prisma generate
+   npx prisma db push
+   npm run dev
+   ```
+
+4. Si tienes datos existentes, copia tu base de datos:
+   ```bash
+   cp tu-version-anterior/prisma/db/custom.db ./prisma/db/
+   ```

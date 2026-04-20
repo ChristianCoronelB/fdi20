@@ -264,6 +264,9 @@ export async function POST(request: NextRequest) {
       voteScore = 1;
     }
 
+    // Points to award for voting
+    const POINTS_FOR_VOTING = 5;
+
     // Create vote and update project vote count
     const vote = await db.$transaction(async (tx) => {
       const newVote = await tx.vote.create({
@@ -279,6 +282,7 @@ export async function POST(request: NextRequest) {
               id: true,
               name: true,
               avatar: true,
+              points: true,
             },
           },
           project: {
@@ -309,7 +313,24 @@ export async function POST(request: NextRequest) {
         },
       });
 
-      return newVote;
+      // Award points to user for voting
+      const updatedUser = await tx.user.update({
+        where: { id: session.userId },
+        data: {
+          points: { increment: POINTS_FOR_VOTING },
+        },
+        select: { points: true, level: true },
+      });
+
+      // Return vote with updated user points
+      return {
+        ...newVote,
+        user: {
+          ...newVote.user,
+          points: updatedUser.points,
+          level: updatedUser.level,
+        },
+      };
     });
 
     // Create notification for vote confirmation
@@ -339,6 +360,8 @@ export async function POST(request: NextRequest) {
         maxVotesPerUser,
         voteType: votingConfig?.voteType || 'LIKE',
         score: voteScore,
+        pointsEarned: POINTS_FOR_VOTING,
+        totalPoints: vote.user.points,
       },
     }, { status: 201 });
   } catch (error) {

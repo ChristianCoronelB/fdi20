@@ -229,6 +229,17 @@ model Project {
   videoUrl     String?
   githubUrl    String?
   websiteUrl   String?
+  
+  // Additional project details for Fábrica de Ideas
+  leaderName     String?
+  leaderEmail    String?
+  leaderPhone    String?
+  institution    String?
+  course         String?
+  tutorName      String?
+  area           String?      // Área de participación
+  projectCategory String?    // Categoría del proyecto (Emprendimiento Escolar, Idea de negocio, etc.)
+  
   status       ProjectStatus @default(DRAFT)
   totalVotes   Int           @default(0)
   averageScore Float?
