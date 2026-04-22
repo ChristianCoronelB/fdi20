@@ -402,6 +402,17 @@ export default function FabricaDeIdeasApp() {
   const [registerPassword, setRegisterPassword] = useState('');
   const [showLogin, setShowLogin] = useState(true);
 
+  // User profile states
+  const [showProfileDialog, setShowProfileDialog] = useState(false);
+  const [showChangePassword, setShowChangePassword] = useState(false);
+  const [showDeleteAccountDialog, setShowDeleteAccountDialog] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
+
   // Data states
   const [events, setEvents] = useState<Event[]>([]);
   const [eventsList, setEventsList] = useState<Event[]>([]);
@@ -1630,6 +1641,24 @@ export default function FabricaDeIdeasApp() {
   const [loadingEvaluations, setLoadingEvaluations] = useState(false);
   const [evaluationFilter, setEvaluationFilter] = useState<'all' | 'pending' | 'completed'>('all');
 
+  // Evaluator assignments states
+  const [evaluatorAssignments, setEvaluatorAssignments] = useState<Array<{
+    id: string;
+    evaluatorId: string;
+    projectId: string;
+    completed: boolean;
+    evaluator?: { id: string; name: string; email: string };
+    project?: { id: string; name: string; description?: string; status: string };
+  }>>([]);
+  const [assignmentDialogOpen, setAssignmentDialogOpen] = useState(false);
+  const [savingAssignment, setSavingAssignment] = useState(false);
+  const [newAssignmentForm, setNewAssignmentForm] = useState({
+    evaluatorId: '',
+    projectId: '',
+  });
+  const [assignmentSearchQuery, setAssignmentSearchQuery] = useState('');
+  const [evaluationSubTab, setEvaluationSubTab] = useState<'projects' | 'assignments'>('projects');
+
   // Evaluation criteria definitions
   const evaluationCriteria = [
     { key: 'innovation', label: 'Innovación y Creatividad', description: 'Originalidad de la idea, enfoque innovador y creatividad en la solución propuesta' },
@@ -2494,7 +2523,7 @@ export default function FabricaDeIdeasApp() {
 
   // Get projects filtered by evaluation status
   const getFilteredProjectsForEvaluation = () => {
-    if (!user || user.role !== 'EVALUATOR') return [];
+    if (!user || (user.role !== 'EVALUATOR' && user.role !== 'ADMIN' && user.role !== 'ORGANIZER')) return [];
 
     const evaluatedProjectIds = evaluations
       .filter(e => e.status === 'SUBMITTED')
@@ -2510,10 +2539,97 @@ export default function FabricaDeIdeasApp() {
     return projects.filter(p => p.status === 'APPROVED');
   };
 
+  // Load evaluator assignments
+  const loadEvaluatorAssignments = async () => {
+    try {
+      const res = await fetch('/api/evaluator-assignments');
+      const data = await res.json();
+      if (data.success) {
+        setEvaluatorAssignments(data.data || []);
+      }
+    } catch (error) {
+      console.error('Error loading assignments:', error);
+    }
+  };
+
+  // Create new assignment
+  const handleCreateAssignment = async () => {
+    if (!newAssignmentForm.evaluatorId || !newAssignmentForm.projectId) {
+      toast.error('Selecciona un evaluador y un proyecto');
+      return;
+    }
+
+    setSavingAssignment(true);
+    try {
+      const res = await fetch('/api/evaluator-assignments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          evaluatorId: newAssignmentForm.evaluatorId,
+          projectId: newAssignmentForm.projectId,
+          eventId: selectedEvent?.id || eventsList[0]?.id,
+        }),
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setEvaluatorAssignments(prev => [...prev, data.data]);
+        setAssignmentDialogOpen(false);
+        setNewAssignmentForm({ evaluatorId: '', projectId: '' });
+        toast.success('Asignación creada correctamente');
+      } else {
+        toast.error(data.error || 'Error al crear asignación');
+      }
+    } catch (error) {
+      toast.error('Error al crear asignación');
+    }
+    setSavingAssignment(false);
+  };
+
+  // Delete assignment
+  const handleDeleteAssignment = async (id: string) => {
+    try {
+      const res = await fetch(`/api/evaluator-assignments?id=${id}`, {
+        method: 'DELETE',
+      });
+
+      const data = await res.json();
+      if (data.success) {
+        setEvaluatorAssignments(prev => prev.filter(a => a.id !== id));
+        toast.success('Asignación eliminada correctamente');
+      } else {
+        toast.error(data.error || 'Error al eliminar asignación');
+      }
+    } catch (error) {
+      toast.error('Error al eliminar asignación');
+    }
+  };
+
+  // Get filtered projects for assignment search
+  const getFilteredProjectsForAssignment = () => {
+    if (!assignmentSearchQuery.trim()) {
+      return projects.filter(p => p.status === 'APPROVED');
+    }
+    const query = assignmentSearchQuery.toLowerCase();
+    return projects.filter(p => 
+      p.status === 'APPROVED' && 
+      (p.name.toLowerCase().includes(query) || 
+       p.team?.toLowerCase().includes(query) ||
+       p.category?.toLowerCase().includes(query))
+    );
+  };
+
   // Load evaluations when user is evaluator
   useEffect(() => {
     if (user && user.role === 'EVALUATOR') {
       loadUserEvaluations();
+    }
+  }, [user]);
+
+  // Load evaluator assignments when user is evaluator or admin
+  useEffect(() => {
+    if (user && (user.role === 'EVALUATOR' || user.role === 'ADMIN' || user.role === 'ORGANIZER')) {
+      loadEvaluatorAssignments();
     }
   }, [user]);
 
@@ -3506,9 +3622,13 @@ export default function FabricaDeIdeasApp() {
               <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel>Mi Cuenta</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowProfileDialog(true)}>
                   <User className="w-4 h-4 mr-2" />
                   Perfil
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setShowChangePassword(true)}>
+                  <Lock className="w-4 h-4 mr-2" />
+                  Cambiar Contraseña
                 </DropdownMenuItem>
                 <DropdownMenuItem>
                   <Trophy className="w-4 h-4 mr-2" />
@@ -3604,6 +3724,14 @@ export default function FabricaDeIdeasApp() {
                   >
                     <Vote className="w-5 h-5" />
                     Votación
+                  </Button>
+                  <Button
+                    variant={activeTab === 'evaluation' ? 'secondary' : 'ghost'}
+                    className="w-full justify-start gap-3"
+                    onClick={() => setActiveTab('evaluation')}
+                  >
+                    <Star className="w-5 h-5" />
+                    Evaluación
                   </Button>
                   <Button
                     variant={activeTab === 'certificates' ? 'secondary' : 'ghost'}
@@ -3862,6 +3990,86 @@ export default function FabricaDeIdeasApp() {
                             </div>
                           ))}
                         </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Top 3 Winners by Category */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Trophy className="w-5 h-5 text-amber-500" />
+                          Top 3 Proyectos por Categoría
+                        </CardTitle>
+                        <CardDescription>Los proyectos mejor evaluados en cada categoría</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        {(() => {
+                          // Get unique categories from projects
+                          const categories = [...new Set(projects.filter(p => p.category).map(p => p.category))];
+                          
+                          if (categories.length === 0) {
+                            return (
+                              <div className="text-center py-8 text-muted-foreground">
+                                <Lightbulb className="w-12 h-12 mx-auto opacity-50 mb-2" />
+                                <p>No hay categorías disponibles</p>
+                              </div>
+                            );
+                          }
+                          
+                          return (
+                            <div className="space-y-6">
+                              {categories.map((category) => {
+                                // Get top 3 projects for this category, sorted by average evaluation
+                                const topProjects = projects
+                                  .filter(p => p.category === category && p.status === 'APPROVED')
+                                  .sort((a, b) => (b.averageEvaluation || b.averageScore || 0) - (a.averageEvaluation || a.averageScore || 0))
+                                  .slice(0, 3);
+                                
+                                if (topProjects.length === 0) return null;
+                                
+                                return (
+                                  <div key={category} className="space-y-3">
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant="secondary" className="text-sm">{category}</Badge>
+                                      <span className="text-xs text-muted-foreground">({topProjects.length} proyectos)</span>
+                                    </div>
+                                    <div className="grid gap-2">
+                                      {topProjects.map((project, index) => (
+                                        <div 
+                                          key={project.id} 
+                                          className={cn(
+                                            "flex items-center gap-3 p-3 rounded-lg border transition-all",
+                                            index === 0 && "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800",
+                                            index === 1 && "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700",
+                                            index === 2 && "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800"
+                                          )}
+                                        >
+                                          <div className={cn(
+                                            "w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-sm",
+                                            index === 0 ? "bg-amber-500" : index === 1 ? "bg-gray-400" : "bg-orange-600"
+                                          )}>
+                                            {index + 1}
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <p className="font-medium truncate">{project.name}</p>
+                                            <p className="text-xs text-muted-foreground">Equipo: {project.team}</p>
+                                          </div>
+                                          <div className="text-right">
+                                            <div className="flex items-center gap-1 text-sm font-bold text-amber-600">
+                                              <Star className="w-4 h-4 fill-amber-500" />
+                                              {project.averageEvaluation?.toFixed(1) || project.averageScore?.toFixed(1) || '0.0'}
+                                            </div>
+                                            <p className="text-xs text-muted-foreground">{project.totalVotes} votos</p>
+                                          </div>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          );
+                        })()}
                       </CardContent>
                     </Card>
                   </div>
@@ -9020,8 +9228,8 @@ export default function FabricaDeIdeasApp() {
                   </div>
                 )}
 
-                {/* Evaluation Module - Only for EVALUATOR role */}
-                {activeTab === 'evaluation' && user?.role === 'EVALUATOR' && (
+                {/* Evaluation Module - For EVALUATOR, ADMIN, ORGANIZER roles */}
+                {activeTab === 'evaluation' && (user?.role === 'EVALUATOR' || user?.role === 'ADMIN' || user?.role === 'ORGANIZER') && (
                   <div className="space-y-6">
                     <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
@@ -9030,46 +9238,62 @@ export default function FabricaDeIdeasApp() {
                           Evaluación de Proyectos
                         </h1>
                         <p className="text-sm md:text-base text-muted-foreground">
-                          Califica los proyectos de emprendimiento e innovación
+                          {user?.role === 'EVALUATOR' 
+                            ? 'Califica los proyectos de emprendimiento e innovación' 
+                            : 'Gestiona asignaciones y evalúa proyectos'}
                         </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Select 
-                          value={evaluationFilter} 
-                          onValueChange={(value: 'all' | 'pending' | 'completed') => setEvaluationFilter(value)}
-                        >
-                          <SelectTrigger className="w-[180px]">
-                            <SelectValue placeholder="Filtrar proyectos" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="all">Todos los proyectos</SelectItem>
-                            <SelectItem value="pending">Pendientes</SelectItem>
-                            <SelectItem value="completed">Evaluados</SelectItem>
-                          </SelectContent>
-                        </Select>
                       </div>
                     </div>
 
-                    {/* Evaluation Stats */}
-                    <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
-                      <Card className="bg-gradient-to-br from-amber-500 to-orange-600 text-white">
-                        <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
-                          <div className="flex items-center gap-2 md:gap-4">
-                            <Lightbulb className="w-6 h-6 md:w-8 md:h-8" />
-                            <div>
-                              <p className="text-xs md:text-sm opacity-90">Total Proyectos</p>
-                              <p className="text-xl md:text-3xl font-bold">{projects.filter(p => p.status === 'APPROVED').length}</p>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-                      <Card>
-                        <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
-                          <div className="flex items-center gap-2 md:gap-4">
-                            <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-emerald-500" />
-                            <div>
-                              <p className="text-xs md:text-sm text-muted-foreground">Evaluados</p>
-                              <p className="text-xl md:text-3xl font-bold">{evaluations.filter(e => e.status === 'SUBMITTED').length}</p>
+                    {/* Tabs for Admin/Organizer - Projects and Assignments */}
+                    {(user?.role === 'ADMIN' || user?.role === 'ORGANIZER') && (
+                      <Tabs value={evaluationSubTab} onValueChange={(v) => setEvaluationSubTab(v as 'projects' | 'assignments')}>
+                        <TabsList>
+                          <TabsTrigger value="projects">Proyectos</TabsTrigger>
+                          <TabsTrigger value="assignments">Asignaciones</TabsTrigger>
+                        </TabsList>
+                      </Tabs>
+                    )}
+
+                    {/* Projects Tab Content */}
+                    {((user?.role === 'ADMIN' || user?.role === 'ORGANIZER') && evaluationSubTab === 'projects') || user?.role === 'EVALUATOR' ? (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <Select 
+                            value={evaluationFilter} 
+                            onValueChange={(value: 'all' | 'pending' | 'completed') => setEvaluationFilter(value)}
+                          >
+                            <SelectTrigger className="w-[180px]">
+                              <SelectValue placeholder="Filtrar proyectos" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="all">Todos los proyectos</SelectItem>
+                              <SelectItem value="pending">Pendientes</SelectItem>
+                              <SelectItem value="completed">Evaluados</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        {/* Evaluation Stats */}
+                        <div className="grid gap-4 grid-cols-2 md:grid-cols-4">
+                          <Card className="bg-gradient-to-br from-amber-500 to-orange-600 text-white">
+                            <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
+                              <div className="flex items-center gap-2 md:gap-4">
+                                <Lightbulb className="w-6 h-6 md:w-8 md:h-8" />
+                                <div>
+                                  <p className="text-xs md:text-sm opacity-90">Total Proyectos</p>
+                                  <p className="text-xl md:text-3xl font-bold">{projects.filter(p => p.status === 'APPROVED').length}</p>
+                                </div>
+                              </div>
+                            </CardContent>
+                          </Card>
+                          <Card>
+                            <CardContent className="pt-4 md:pt-6 p-3 md:p-6">
+                              <div className="flex items-center gap-2 md:gap-4">
+                                <CheckCircle className="w-6 h-6 md:w-8 md:h-8 text-emerald-500" />
+                                <div>
+                                  <p className="text-xs md:text-sm text-muted-foreground">Evaluados</p>
+                                  <p className="text-xl md:text-3xl font-bold">{evaluations.filter(e => e.status === 'SUBMITTED').length}</p>
                             </div>
                           </div>
                         </CardContent>
@@ -9257,8 +9481,388 @@ export default function FabricaDeIdeasApp() {
                         })
                       )}
                     </div>
+                      </>
+                    ) : null}
+
+                    {/* Assignments Tab Content - Only for Admin/Organizer */}
+                    {(user?.role === 'ADMIN' || user?.role === 'ORGANIZER') && evaluationSubTab === 'assignments' && (
+                      <div className="space-y-4">
+                        <div className="flex flex-col sm:flex-row gap-4 justify-between">
+                          <div className="flex-1">
+                            <Input
+                              placeholder="Buscar proyectos por nombre, equipo o categoría..."
+                              value={assignmentSearchQuery}
+                              onChange={(e) => setAssignmentSearchQuery(e.target.value)}
+                              className="max-w-md"
+                            />
+                          </div>
+                          <Button
+                            onClick={() => setAssignmentDialogOpen(true)}
+                            className="bg-gradient-to-r from-emerald-500 to-teal-600"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Nueva Asignación
+                          </Button>
+                        </div>
+
+                        {evaluatorAssignments.length === 0 ? (
+                          <Card>
+                            <CardContent className="py-8 text-center">
+                              <Award className="w-12 h-12 mx-auto text-muted-foreground opacity-50" />
+                              <p className="mt-2 text-muted-foreground">No hay asignaciones creadas</p>
+                              <p className="text-sm text-muted-foreground">Crea una nueva asignación para comenzar</p>
+                            </CardContent>
+                          </Card>
+                        ) : (
+                          <div className="space-y-3">
+                            {evaluatorAssignments.map((assignment) => (
+                              <Card key={assignment.id}>
+                                <CardContent className="p-4">
+                                  <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-4">
+                                      <Avatar className="h-10 w-10">
+                                        <AvatarFallback>
+                                          {assignment.evaluator?.name?.split(' ').map((n: string) => n[0]).join('').slice(0, 2).toUpperCase() || 'EV'}
+                                        </AvatarFallback>
+                                      </Avatar>
+                                      <div>
+                                        <p className="font-medium">{assignment.evaluator?.name || 'Evaluador'}</p>
+                                        <p className="text-sm text-muted-foreground">
+                                          Proyecto: {assignment.project?.name || 'Proyecto'}
+                                        </p>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      {assignment.completed ? (
+                                        <Badge className="bg-emerald-500">Completado</Badge>
+                                      ) : (
+                                        <Badge variant="outline">Pendiente</Badge>
+                                      )}
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={() => handleDeleteAssignment(assignment.id)}
+                                      >
+                                        <Trash2 className="w-4 h-4 text-red-500" />
+                                      </Button>
+                                    </div>
+                                  </div>
+                                </CardContent>
+                              </Card>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
                 )}
+
+                {/* Profile Dialog */}
+                <Dialog open={showProfileDialog} onOpenChange={setShowProfileDialog}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Mi Perfil</DialogTitle>
+                      <DialogDescription>Información de tu cuenta</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="flex items-center gap-4">
+                        <Avatar className="h-16 w-16">
+                          <AvatarImage src={user?.avatar} />
+                          <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white text-xl">
+                            {user?.name ? getInitials(user.name) : 'U'}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-semibold text-lg">{user?.name}</p>
+                          <p className="text-sm text-muted-foreground">{user?.email}</p>
+                          <Badge className={getRoleColor(user?.role || 'PARTICIPANT')}>
+                            {getRoleLabel(user?.role || 'PARTICIPANT')}
+                          </Badge>
+                        </div>
+                      </div>
+                      <Separator />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                          <p className="text-2xl font-bold text-emerald-600">{user?.points || 0}</p>
+                          <p className="text-xs text-muted-foreground">Puntos</p>
+                        </div>
+                        <div className="text-center p-3 bg-muted/50 rounded-lg">
+                          <p className="text-2xl font-bold text-amber-600">{user?.level || 1}</p>
+                          <p className="text-xs text-muted-foreground">Nivel</p>
+                        </div>
+                      </div>
+                      <div className="space-y-2 pt-4 border-t">
+                        <Button 
+                          variant="outline" 
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setShowProfileDialog(false);
+                            setShowChangePassword(true);
+                          }}
+                        >
+                          <Lock className="w-4 h-4 mr-2" />
+                          Cambiar Contraseña
+                        </Button>
+                        <Button 
+                          variant="destructive" 
+                          className="w-full justify-start"
+                          onClick={() => {
+                            setShowProfileDialog(false);
+                            setShowDeleteAccountDialog(true);
+                          }}
+                        >
+                          <AlertTriangle className="w-4 h-4 mr-2" />
+                          Eliminar Mi Cuenta
+                        </Button>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button onClick={() => setShowProfileDialog(false)}>Cerrar</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Change Password Dialog */}
+                <Dialog open={showChangePassword} onOpenChange={setShowChangePassword}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Cambiar Contraseña</DialogTitle>
+                      <DialogDescription>Ingresa tu contraseña actual y la nueva</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="current-pwd">Contraseña Actual</Label>
+                        <Input
+                          id="current-pwd"
+                          type="password"
+                          placeholder="••••••••"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="new-pwd">Nueva Contraseña</Label>
+                        <Input
+                          id="new-pwd"
+                          type="password"
+                          placeholder="Mínimo 6 caracteres"
+                          value={newPassword}
+                          onChange={(e) => setNewPassword(e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="confirm-pwd">Confirmar Contraseña</Label>
+                        <Input
+                          id="confirm-pwd"
+                          type="password"
+                          placeholder="Repite la nueva contraseña"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => {
+                        setShowChangePassword(false);
+                        setCurrentPassword('');
+                        setNewPassword('');
+                        setConfirmPassword('');
+                      }}>
+                        Cancelar
+                      </Button>
+                      <Button
+                        className="bg-gradient-to-r from-emerald-500 to-teal-600"
+                        disabled={savingProfile || !currentPassword || !newPassword || newPassword !== confirmPassword}
+                        onClick={async () => {
+                          if (newPassword !== confirmPassword) {
+                            toast.error('Las contraseñas no coinciden');
+                            return;
+                          }
+                          if (newPassword.length < 6) {
+                            toast.error('La contraseña debe tener al menos 6 caracteres');
+                            return;
+                          }
+                          setSavingProfile(true);
+                          try {
+                            const res = await fetch('/api/auth/change-password', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ currentPassword, newPassword }),
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                              toast.success('Contraseña actualizada correctamente');
+                              setShowChangePassword(false);
+                              setCurrentPassword('');
+                              setNewPassword('');
+                              setConfirmPassword('');
+                            } else {
+                              toast.error(data.error || 'Error al cambiar contraseña');
+                            }
+                          } catch {
+                            toast.error('Error de conexión');
+                          }
+                          setSavingProfile(false);
+                        }}
+                      >
+                        {savingProfile ? 'Guardando...' : 'Cambiar Contraseña'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* Delete Account Dialog */}
+                <Dialog open={showDeleteAccountDialog} onOpenChange={setShowDeleteAccountDialog}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle className="text-red-600 flex items-center gap-2">
+                        <AlertTriangle className="w-5 h-5" />
+                        Eliminar Cuenta
+                      </DialogTitle>
+                      <DialogDescription>Esta acción es irreversible</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <Alert className="border-red-200 bg-red-50 dark:bg-red-950">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
+                        <AlertTitle>Advertencia</AlertTitle>
+                        <AlertDescription>
+                          Al eliminar tu cuenta, se borrarán permanentemente:
+                          <ul className="list-disc pl-4 mt-2 text-sm">
+                            <li>Tu información personal</li>
+                            <li>Tu historial de asistencias</li>
+                            <li>Tus votos y evaluaciones</li>
+                            <li>Tus certificados y logros</li>
+                          </ul>
+                          <p className="mt-2 text-xs">De acuerdo con la Ley Orgánica de Protección de Datos Personales del Ecuador, tienes derecho a solicitar la eliminación de tus datos.</p>
+                        </AlertDescription>
+                      </Alert>
+                      <div className="space-y-2">
+                        <Label>Escribe <strong>ELIMINAR</strong> para confirmar:</Label>
+                        <Input
+                          value={deleteConfirmText}
+                          onChange={(e) => setDeleteConfirmText(e.target.value.toUpperCase())}
+                          placeholder="ELIMINAR"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Confirma tu contraseña:</Label>
+                        <Input
+                          type="password"
+                          value={currentPassword}
+                          onChange={(e) => setCurrentPassword(e.target.value)}
+                          placeholder="••••••••"
+                        />
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => {
+                        setShowDeleteAccountDialog(false);
+                        setDeleteConfirmText('');
+                        setCurrentPassword('');
+                      }}>
+                        Cancelar
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        disabled={deleteConfirmText !== 'ELIMINAR' || !currentPassword || deletingAccount}
+                        onClick={async () => {
+                          setDeletingAccount(true);
+                          try {
+                            const res = await fetch('/api/users/delete-account', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ password: currentPassword }),
+                            });
+                            const data = await res.json();
+                            if (data.success) {
+                              toast.success('Cuenta eliminada correctamente');
+                              setUser(null);
+                              setIsLoggedIn(false);
+                              setShowDeleteAccountDialog(false);
+                            } else {
+                              toast.error(data.error || 'Error al eliminar cuenta');
+                            }
+                          } catch {
+                            toast.error('Error de conexión');
+                          }
+                          setDeletingAccount(false);
+                        }}
+                      >
+                        {deletingAccount ? 'Eliminando...' : 'Eliminar Mi Cuenta'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+
+                {/* New Assignment Dialog */}
+                <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Nueva Asignación</DialogTitle>
+                      <DialogDescription>Asigna un proyecto a un evaluador</DialogDescription>
+                    </DialogHeader>
+                    <div className="space-y-4 py-4">
+                      <div className="space-y-2">
+                        <Label>Evaluador</Label>
+                        <Select
+                          value={newAssignmentForm.evaluatorId}
+                          onValueChange={(value) => setNewAssignmentForm(prev => ({ ...prev, evaluatorId: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar evaluador" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {usersList.filter(u => u.role === 'EVALUATOR' || u.role === 'ADMIN' || u.role === 'ORGANIZER').map((evaluator) => (
+                              <SelectItem key={evaluator.id} value={evaluator.id}>
+                                {evaluator.name} ({getRoleLabel(evaluator.role)})
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Proyecto</Label>
+                        <Input
+                          placeholder="Buscar proyecto..."
+                          value={assignmentSearchQuery}
+                          onChange={(e) => setAssignmentSearchQuery(e.target.value)}
+                          className="mb-2"
+                        />
+                        <Select
+                          value={newAssignmentForm.projectId}
+                          onValueChange={(value) => setNewAssignmentForm(prev => ({ ...prev, projectId: value }))}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Seleccionar proyecto" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {getFilteredProjectsForAssignment().slice(0, 20).map((project) => (
+                              <SelectItem key={project.id} value={project.id}>
+                                {project.name} - {project.team}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    <DialogFooter>
+                      <Button variant="outline" onClick={() => {
+                        setAssignmentDialogOpen(false);
+                        setNewAssignmentForm({ evaluatorId: '', projectId: '' });
+                        setAssignmentSearchQuery('');
+                      }}>
+                        Cancelar
+                      </Button>
+                      <Button
+                        className="bg-gradient-to-r from-emerald-500 to-teal-600"
+                        onClick={handleCreateAssignment}
+                        disabled={savingAssignment}
+                      >
+                        {savingAssignment ? 'Creando...' : 'Crear Asignación'}
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
 
                 {/* Evaluation Dialog */}
                 <Dialog open={evaluationDialogOpen} onOpenChange={setEvaluationDialogOpen}>
