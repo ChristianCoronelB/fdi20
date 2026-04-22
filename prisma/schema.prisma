@@ -7,7 +7,6 @@ generator client {
 
 datasource db {
   provider = "sqlite"
-  url      = env("DATABASE_URL")
 }
 
 // ==================== USERS & AUTH ====================
@@ -49,6 +48,7 @@ model User {
   createdEvents Event[]         @relation("EventCreator")
   sessions      Session[]
   registrations ActivityRegistration[]
+  evaluatorAssignments EvaluatorAssignment[]
 
   @@map("users")
 }
@@ -167,6 +167,7 @@ enum ActivityStatus {
 
 enum ActivityType {
   KEYNOTE
+  KEYNOTE_SPEECH
   WORKSHOP
   PANEL
   PRESENTATION
@@ -180,6 +181,7 @@ model Activity {
   eventId     String
   roomId      String
   speakerId   String?
+  expositorName String?       // Nombre del expositor (además del speakerId)
   title       String
   description String?
   type        ActivityType   @default(PRESENTATION)
@@ -256,6 +258,7 @@ model Project {
   votes        Vote[]
   evaluations  Evaluation[]
   qrCodes      QRCode[]
+  evaluatorAssignments EvaluatorAssignment[]
   
   @@map("projects")
 }
@@ -311,26 +314,27 @@ model Evaluation {
   projectId             String
   
   // Criterios de evaluación para proyectos de emprendimiento e innovación
-  innovation            Int      @default(0)    // Innovación y Creatividad (1-10)
+  // Con sus porcentajes de peso actualizados
+  innovation            Int      @default(0)    // Innovación y Creatividad (20%)
   innovationComment     String?
   
-  viability             Int      @default(0)    // Viabilidad del Negocio (1-10)
+  viability             Int      @default(0)    // Viabilidad del Negocio (15%)
   viabilityComment      String?
   
-  impact                Int      @default(0)    // Impacto Social/Ambiental (1-10)
+  impact                Int      @default(0)    // Impacto Social/Ambiental (15%)
   impactComment         String?
   
-  presentation          Int      @default(0)    // Presentación y Comunicación (1-10)
+  presentation          Int      @default(0)    // Pitch/Presentación y Comunicación (20%)
   presentationComment   String?
   
-  scalability           Int      @default(0)    // Potencial de Escalamiento (1-10)
+  scalability           Int      @default(0)    // Potencial de Escalamiento (10%)
   scalabilityComment    String?
   
-  execution             Int      @default(0)    // Equipo y Ejecución (1-10)
-  executionComment      String?
+  deliverable           Int      @default(0)    // Entregable (20%)
+  deliverableComment    String?
   
   // Campos calculados
-  totalScore            Float    @default(0)    // Puntaje total promedio
+  totalScore            Float    @default(0)    // Puntaje total ponderado
   generalComment        String?                 // Comentario general del evaluador
   
   status                String   @default("DRAFT") // DRAFT, SUBMITTED
@@ -605,4 +609,37 @@ model AnalyticsEvent {
   createdAt   DateTime @default(now())
   
   @@map("analytics_events")
+}
+
+// ==================== APP CONFIGURATION ====================
+
+model AppConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique   // Clave única de configuración
+  value       String             // Valor de la configuración (JSON para valores complejos)
+  description String?            // Descripción de la configuración
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  @@map("app_config")
+}
+
+// ==================== EVALUATOR ASSIGNMENTS ====================
+
+model EvaluatorAssignment {
+  id          String   @id @default(cuid())
+  evaluatorId String             // ID del usuario evaluador
+  projectId   String             // ID del proyecto asignado
+  assignedBy  String             // ID del admin que asignó
+  status      String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
+  dueDate     DateTime?          // Fecha límite para evaluar
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  // Relations
+  evaluator   User    @relation(fields: [evaluatorId], references: [id], onDelete: Cascade)
+  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  
+  @@unique([evaluatorId, projectId])
+  @@map("evaluator_assignments")
 }

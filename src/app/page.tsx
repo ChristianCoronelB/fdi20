@@ -77,6 +77,7 @@ interface Activity {
   endTime: string;
   room?: Room;
   speaker?: { name: string; photo?: string };
+  expositorName?: string;
   currentAttendance: number;
   _count?: { attendances: number };
 }
@@ -329,6 +330,7 @@ const getStatusColor = (status: string) => {
 const getActivityTypeColor = (type: string) => {
   const colors: Record<string, string> = {
     KEYNOTE: 'bg-purple-500',
+    KEYNOTE_SPEECH: 'bg-violet-600',
     WORKSHOP: 'bg-blue-500',
     PANEL: 'bg-green-500',
     PRESENTATION: 'bg-orange-500',
@@ -342,6 +344,7 @@ const getActivityTypeColor = (type: string) => {
 const getTypeLabel = (type: string) => {
   const labels: Record<string, string> = {
     KEYNOTE: 'Conferencia',
+    KEYNOTE_SPEECH: 'Charla Magistral',
     WORKSHOP: 'Taller',
     PANEL: 'Panel',
     PRESENTATION: 'Presentación',
@@ -573,6 +576,7 @@ export default function FabricaDeIdeasApp() {
     maxCapacity: '',
     theme: '',
     speakerId: '',
+    expositorName: '',
     generateQr: true,
   });
   const [savingActivity, setSavingActivity] = useState(false);
@@ -750,6 +754,8 @@ export default function FabricaDeIdeasApp() {
       }
     };
     checkSession();
+    // Load app configuration on mount
+    loadAppConfig();
   }, []);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -873,6 +879,7 @@ export default function FabricaDeIdeasApp() {
             endTime: endDateTime,
             maxCapacity: activityForm.maxCapacity ? parseInt(activityForm.maxCapacity) : null,
             theme: activityForm.theme,
+            expositorName: activityForm.expositorName,
             status: 'SCHEDULED',
             eventId: '1', // Default event ID for demo
           }),
@@ -905,6 +912,7 @@ export default function FabricaDeIdeasApp() {
         maxCapacity: '',
         theme: '',
         speakerId: '',
+        expositorName: '',
         generateQr: true,
       });
       setActivityDialogOpen(false);
@@ -930,6 +938,7 @@ export default function FabricaDeIdeasApp() {
       maxCapacity: '',
       theme: '',
       speakerId: '',
+      expositorName: '',
       generateQr: true,
     });
   };
@@ -952,6 +961,7 @@ export default function FabricaDeIdeasApp() {
       maxCapacity: '',
       theme: '',
       speakerId: '',
+      expositorName: activity.expositorName || '',
       generateQr: true,
     });
     setEditActivityDialogOpen(true);
@@ -1037,6 +1047,8 @@ export default function FabricaDeIdeasApp() {
           startTime: startDateTime,
           endTime: endDateTime,
           status: selectedActivityForEdit.status,
+          expositorName: activityForm.expositorName,
+          theme: activityForm.theme,
         }),
       });
 
@@ -1609,6 +1621,26 @@ export default function FabricaDeIdeasApp() {
     announcementsEnabled: true,
   });
   const [savingNotificationConfig, setSavingNotificationConfig] = useState(false);
+
+  // App configuration states (global settings)
+  const [appConfig, setAppConfig] = useState({
+    timezone: 'America/Guayaquil',
+    footerText: '© 2024 Fábrica de Ideas - Plataforma de Gestión de Eventos',
+  });
+  const [savingAppConfig, setSavingAppConfig] = useState(false);
+
+  // Timezone options
+  const timezoneOptions = [
+    { value: 'America/Guayaquil', label: 'Ecuador (GMT-5)' },
+    { value: 'America/Bogota', label: 'Colombia (GMT-5)' },
+    { value: 'America/Lima', label: 'Perú (GMT-5)' },
+    { value: 'America/Mexico_City', label: 'México (GMT-6)' },
+    { value: 'America/Santiago', label: 'Chile (GMT-4)' },
+    { value: 'America/Buenos_Aires', label: 'Argentina (GMT-3)' },
+    { value: 'America/Sao_Paulo', label: 'Brasil (GMT-3)' },
+    { value: 'Europe/Madrid', label: 'España (GMT+1)' },
+    { value: 'UTC', label: 'UTC' },
+  ];
 
   // QR Scanner states
   const [scannerActive, setScannerActive] = useState(false);
@@ -2352,6 +2384,110 @@ export default function FabricaDeIdeasApp() {
       toast.error('Error al guardar la configuración');
     } finally {
       setSavingNotificationConfig(false);
+    }
+  };
+
+  // Load app configuration
+  const loadAppConfig = async () => {
+    try {
+      const res = await fetch('/api/app-config');
+      if (res.ok) {
+        const data = await res.json();
+        if (data.success && data.data) {
+          setAppConfig({
+            timezone: data.data.timezone || 'America/Guayaquil',
+            footerText: data.data.footerText || '© 2024 Fábrica de Ideas - Plataforma de Gestión de Eventos',
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error loading app config:', error);
+    }
+  };
+
+  // Save app configuration
+  const handleSaveAppConfig = async () => {
+    setSavingAppConfig(true);
+    try {
+      const res = await fetch('/api/app-config', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          configs: {
+            timezone: appConfig.timezone,
+            footerText: appConfig.footerText,
+          },
+        }),
+      });
+
+      const data = await res.json();
+
+      if (data.success) {
+        toast.success('Configuración guardada correctamente');
+      } else {
+        toast.error(data.error || 'Error al guardar la configuración');
+      }
+    } catch (error) {
+      console.error('Error saving app config:', error);
+      toast.error('Error al guardar la configuración');
+    } finally {
+      setSavingAppConfig(false);
+    }
+  };
+
+  // Calculate dynamic activity status based on current time
+  const getActivityDynamicStatus = useCallback((activity: Activity): 'EN_CURSO' | 'FINALIZADO' | 'PROXIMO' => {
+    const now = new Date();
+    const startTime = new Date(activity.startTime);
+    const endTime = new Date(activity.endTime);
+
+    if (now >= startTime && now <= endTime) {
+      return 'EN_CURSO';
+    } else if (now > endTime) {
+      return 'FINALIZADO';
+    } else {
+      return 'PROXIMO';
+    }
+  }, []);
+
+  // Get dynamic status label and color
+  const getDynamicStatusInfo = (status: 'EN_CURSO' | 'FINALIZADO' | 'PROXIMO') => {
+    switch (status) {
+      case 'EN_CURSO':
+        return { label: 'En Curso', color: 'bg-green-500 text-white' };
+      case 'FINALIZADO':
+        return { label: 'Finalizado', color: 'bg-gray-500 text-white' };
+      case 'PROXIMO':
+        return { label: 'Próximo', color: 'bg-blue-500 text-white' };
+    }
+  };
+
+  // Format time with timezone
+  const formatTimeWithTimezone = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleTimeString('es-ES', {
+        hour: '2-digit',
+        minute: '2-digit',
+        timeZone: appConfig.timezone,
+      });
+    } catch {
+      return formatTime(dateStr);
+    }
+  };
+
+  // Format date with timezone
+  const formatDateWithTimezone = (dateStr: string) => {
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('es-ES', {
+        weekday: 'short',
+        day: 'numeric',
+        month: 'short',
+        timeZone: appConfig.timezone,
+      });
+    } catch {
+      return formatDate(dateStr);
     }
   };
 
@@ -4880,6 +5016,7 @@ export default function FabricaDeIdeasApp() {
                                     </SelectTrigger>
                                     <SelectContent>
                                       <SelectItem value="KEYNOTE">Conferencia</SelectItem>
+                                      <SelectItem value="KEYNOTE_SPEECH">Charla Magistral</SelectItem>
                                       <SelectItem value="WORKSHOP">Taller</SelectItem>
                                       <SelectItem value="PANEL">Panel</SelectItem>
                                       <SelectItem value="PRESENTATION">Presentación</SelectItem>
@@ -4948,6 +5085,15 @@ export default function FabricaDeIdeasApp() {
                                   placeholder="Ej: Innovación, Tecnología, Diseño"
                                   value={activityForm.theme}
                                   onChange={(e) => setActivityForm(prev => ({ ...prev, theme: e.target.value }))}
+                                />
+                              </div>
+                              <div className="grid gap-2">
+                                <Label htmlFor="expositor-name">Expositor</Label>
+                                <Input 
+                                  id="expositor-name"
+                                  placeholder="Nombre del expositor o conferencista"
+                                  value={activityForm.expositorName}
+                                  onChange={(e) => setActivityForm(prev => ({ ...prev, expositorName: e.target.value }))}
                                 />
                               </div>
                               <div className="flex items-center gap-2">
@@ -5090,6 +5236,7 @@ export default function FabricaDeIdeasApp() {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="KEYNOTE">Conferencia</SelectItem>
+                                  <SelectItem value="KEYNOTE_SPEECH">Charla Magistral</SelectItem>
                                   <SelectItem value="WORKSHOP">Taller</SelectItem>
                                   <SelectItem value="PANEL">Panel</SelectItem>
                                   <SelectItem value="PRESENTATION">Presentación</SelectItem>
@@ -5142,6 +5289,24 @@ export default function FabricaDeIdeasApp() {
                                 />
                               </div>
                             </div>
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="edit-expositor-name">Expositor</Label>
+                            <Input
+                              id="edit-expositor-name"
+                              placeholder="Nombre del expositor o conferencista"
+                              value={activityForm.expositorName}
+                              onChange={(e) => setActivityForm(prev => ({ ...prev, expositorName: e.target.value }))}
+                            />
+                          </div>
+                          <div className="grid gap-2">
+                            <Label htmlFor="edit-theme">Temática</Label>
+                            <Input
+                              id="edit-theme"
+                              placeholder="Ej: Innovación, Tecnología, Diseño"
+                              value={activityForm.theme}
+                              onChange={(e) => setActivityForm(prev => ({ ...prev, theme: e.target.value }))}
+                            />
                           </div>
                         </div>
                         <DialogFooter>
@@ -7762,6 +7927,73 @@ export default function FabricaDeIdeasApp() {
                           </div>
                         </CardContent>
                       </Card>
+
+                      {/* Global Configuration - Timezone and Footer */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <Globe className="w-5 h-5" />
+                            Configuración Global
+                          </CardTitle>
+                          <CardDescription>Zona horaria y personalización del footer</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                          <div className="grid gap-2">
+                            <Label>Zona Horaria</Label>
+                            <Select 
+                              value={appConfig.timezone} 
+                              onValueChange={(value) => setAppConfig(prev => ({ ...prev, timezone: value }))}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {timezoneOptions.map(tz => (
+                                  <SelectItem key={tz.value} value={tz.value}>{tz.label}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <p className="text-xs text-muted-foreground">
+                              Las fechas y horas se mostrarán según esta zona horaria
+                            </p>
+                          </div>
+                          
+                          <Separator />
+                          
+                          <div className="grid gap-2">
+                            <Label>Texto del Footer</Label>
+                            <Textarea
+                              value={appConfig.footerText}
+                              onChange={(e) => setAppConfig(prev => ({ ...prev, footerText: e.target.value }))}
+                              placeholder="Texto que aparecerá en el footer de la aplicación"
+                              rows={3}
+                            />
+                            <p className="text-xs text-muted-foreground">
+                              Este texto se mostrará en la parte inferior de todas las páginas
+                            </p>
+                          </div>
+                          
+                          <div className="pt-4">
+                            <Button 
+                              className="w-full bg-gradient-to-r from-purple-500 to-pink-600"
+                              onClick={handleSaveAppConfig}
+                              disabled={savingAppConfig}
+                            >
+                              {savingAppConfig ? (
+                                <>
+                                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                                  Guardando...
+                                </>
+                              ) : (
+                                <>
+                                  <Check className="w-4 h-4 mr-2" />
+                                  Guardar Configuración Global
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </CardContent>
+                      </Card>
                     </div>
                   </div>
                 )}
@@ -7900,11 +8132,17 @@ export default function FabricaDeIdeasApp() {
                                     <div className="sm:hidden space-y-3">
                                       <div className="flex items-start justify-between gap-2">
                                         <div className="flex flex-wrap items-center gap-1">
-                                          <Badge className={cn("text-[10px] px-1.5 py-0", getStatusColor(activity.status))}>
-                                            {activity.status === 'SCHEDULED' ? 'Próximo' : activity.status === 'IN_PROGRESS' ? 'En curso' : 'Finalizado'}
-                                          </Badge>
+                                          {(() => {
+                                            const dynamicStatus = getActivityDynamicStatus(activity);
+                                            const statusInfo = getDynamicStatusInfo(dynamicStatus);
+                                            return (
+                                              <Badge className={cn("text-[10px] px-1.5 py-0", statusInfo.color)}>
+                                                {statusInfo.label}
+                                              </Badge>
+                                            );
+                                          })()}
                                           <Badge variant="outline" className="text-[10px] px-1.5 py-0">{getTypeLabel(activity.type)}</Badge>
-                                          {activity.status === 'IN_PROGRESS' && (
+                                          {getActivityDynamicStatus(activity) === 'EN_CURSO' && (
                                             <Badge className="bg-red-500 animate-pulse text-[10px] px-1.5 py-0">EN VIVO</Badge>
                                           )}
                                           {isRegistered && !isComplete && (
@@ -7917,10 +8155,17 @@ export default function FabricaDeIdeasApp() {
                                       </div>
                                       <h3 className="text-sm font-bold leading-tight">{activity.title}</h3>
                                       <p className="text-xs text-muted-foreground line-clamp-2">{activity.description}</p>
+                                      {/* Expositor */}
+                                      {(activity.expositorName || activity.speaker?.name) && (
+                                        <div className="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400">
+                                          <User className="w-3 h-3" />
+                                          <span className="font-medium">{activity.expositorName || activity.speaker?.name}</span>
+                                        </div>
+                                      )}
                                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
                                         <span className="flex items-center gap-1">
                                           <Clock className="w-3 h-3" />
-                                          {formatTime(activity.startTime)} - {formatTime(activity.endTime)}
+                                          {formatTimeWithTimezone(activity.startTime)} - {formatTimeWithTimezone(activity.endTime)}
                                         </span>
                                         <span className="flex items-center gap-1">
                                           <MapPin className="w-3 h-3" />
@@ -8014,11 +8259,17 @@ export default function FabricaDeIdeasApp() {
                                     <div className="hidden sm:flex items-start justify-between gap-4">
                                       <div className="flex-1 min-w-0">
                                         <div className="flex items-center gap-2 mb-2 flex-wrap">
-                                          <Badge className={getStatusColor(activity.status)}>
-                                            {activity.status === 'SCHEDULED' ? 'Próximo' : activity.status === 'IN_PROGRESS' ? 'En curso' : 'Finalizado'}
-                                          </Badge>
+                                          {(() => {
+                                            const dynamicStatus = getActivityDynamicStatus(activity);
+                                            const statusInfo = getDynamicStatusInfo(dynamicStatus);
+                                            return (
+                                              <Badge className={statusInfo.color}>
+                                                {statusInfo.label}
+                                              </Badge>
+                                            );
+                                          })()}
                                           <Badge variant="outline">{getTypeLabel(activity.type)}</Badge>
-                                          {activity.status === 'IN_PROGRESS' && (
+                                          {getActivityDynamicStatus(activity) === 'EN_CURSO' && (
                                             <Badge className="bg-red-500 animate-pulse">EN VIVO</Badge>
                                           )}
                                           {isRegistered && !isComplete && (
@@ -8030,21 +8281,22 @@ export default function FabricaDeIdeasApp() {
                                         </div>
                                         <h3 className="text-lg font-bold mb-1">{activity.title}</h3>
                                         <p className="text-sm text-muted-foreground mb-3 line-clamp-2">{activity.description}</p>
+                                        {/* Expositor */}
+                                        {(activity.expositorName || activity.speaker?.name) && (
+                                          <div className="flex items-center gap-1 text-sm text-emerald-600 dark:text-emerald-400 mb-2">
+                                            <User className="w-4 h-4" />
+                                            <span className="font-medium">Expositor: {activity.expositorName || activity.speaker?.name}</span>
+                                          </div>
+                                        )}
                                         <div className="flex items-center gap-4 mt-3 text-sm flex-wrap">
                                           <span className="flex items-center gap-1 text-muted-foreground">
                                             <Clock className="w-4 h-4" />
-                                            {formatTime(activity.startTime)} - {formatTime(activity.endTime)}
+                                            {formatTimeWithTimezone(activity.startTime)} - {formatTimeWithTimezone(activity.endTime)}
                                           </span>
                                           <span className="flex items-center gap-1 text-muted-foreground">
                                             <MapPin className="w-4 h-4" />
                                             {activity.room?.name || 'Sin sala asignada'}
                                           </span>
-                                          {activity.speaker && (
-                                            <span className="flex items-center gap-1 text-muted-foreground">
-                                              <User className="w-4 h-4" />
-                                              {activity.speaker.name}
-                                            </span>
-                                          )}
                                           <span className="flex items-center gap-1 text-muted-foreground">
                                             <Users className="w-4 h-4" />
                                             {activity.currentAttendance} asistentes
@@ -10455,20 +10707,15 @@ export default function FabricaDeIdeasApp() {
       </Dialog>
 
       {/* Global Footer */}
-      <footer className="hidden lg:block border-t bg-white dark:bg-gray-900 py-4 px-6">
-        <div className="flex items-center justify-between text-sm text-muted-foreground">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
-                <Lightbulb className="w-3.5 h-3.5 text-white" />
-              </div>
-              <span className="font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
-                Fábrica de Ideas
-              </span>
+      <footer className="border-t bg-white dark:bg-gray-900 py-3 px-4 md:py-4 md:px-6">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-2 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <div className="w-5 h-5 md:w-6 md:h-6 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+              <Lightbulb className="w-3 h-3 md:w-3.5 md:h-3.5 text-white" />
             </div>
-            <span>© 2024 Todos los derechos reservados</span>
+            <span className="text-xs md:text-sm">{appConfig.footerText}</span>
           </div>
-          <div className="flex items-center gap-4">
+          <div className="hidden lg:flex items-center gap-4">
             <Button 
               variant="ghost" 
               size="sm" 
@@ -10486,14 +10733,6 @@ export default function FabricaDeIdeasApp() {
             >
               {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
               {theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              className="gap-2 text-muted-foreground hover:text-foreground"
-            >
-              <Shield className="w-4 h-4" />
-              LOPDP
             </Button>
           </div>
         </div>

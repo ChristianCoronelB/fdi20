@@ -144,6 +144,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
       'roomId', 'speakerId', 'title', 'description', 'type',
       'status', 'theme', 'tags', 'startTime', 'endTime',
       'maxCapacity', 'currentAttendance', 'color', 'isActive',
+      'expositorName',
     ];
     
     for (const field of allowedFields) {
