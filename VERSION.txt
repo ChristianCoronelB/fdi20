@@ -1,23 +1,129 @@
 Fábrica de Ideas - Plataforma de Gestión de Eventos
-Versión: v1.0.0-20260417-213128
-Fecha: Fri Apr 17 21:31:28 UTC 2026
+Versión: v2.1.4-20260422
+Fecha: 22 de Abril de 2026
 Autor: Z.ai Code
 
-Características:
-- Dashboard con estadísticas
-- Gestión de usuarios (CRUD completo)
-- Gestión de eventos
-- Gestión de actividades
-- Gestión de proyectos
-- Sistema de evaluaciones
-- Sistema de votación
-- Escáner QR
-- Sistema de logros y gamificación
-- Certificados
-- API REST completa
+===========================================
+CARACTERÍSTICAS PRINCIPALES
+===========================================
 
-Credenciales de prueba:
-- Admin: admin@fabricadeideas.com / admin123
-- Organizador: organizer@fabricadeideas.com / org123
-- Moderador: moderator@fabricadeideas.com / mod123
-- Participante: user1@fabricadeideas.com / user123
+1. DASHBOARD
+- Estadísticas en tiempo real
+- Resumen de proyectos ganadores por categoría
+- Métricas de participación
+- Gráficos interactivos
+
+2. GESTIÓN DE USUARIOS
+- CRUD completo de usuarios
+- Roles: Admin, Organizador, Moderador, Evaluador, Participante
+- Perfil de usuario con cambio de contraseña
+- Sistema de puntos y niveles
+
+3. GESTIÓN DE EVENTOS
+- Crear y administrar eventos
+- Configuración de fechas, ubicación
+- Activación/desactivación de módulos
+
+4. GESTIÓN DE ACTIVIDADES
+- Agenda de actividades
+- Asignación de salas y expositores
+- Control de capacidad
+- Estados: Programado, En Progreso, Completado, Cancelado
+
+5. GESTIÓN DE PROYECTOS
+- Registro de proyectos participantes
+- Categorías y áreas de participación
+- Estados: Borrador, Enviado, Aprobado, Rechazado, Finalista, Ganador
+- Información del equipo y líder
+
+6. MÓDULO DE EVALUACIÓN
+- Rúbrica de evaluación con 6 criterios:
+  * Innovación y Creatividad (20%)
+  * Viabilidad del Negocio (15%)
+  * Impacto Social/Ambiental (15%)
+  * Presentación y Comunicación (20%)
+  * Potencial de Escalamiento (15%)
+  * Equipo y Ejecución (15%)
+- Asignación de proyectos a evaluadores
+- Comentarios por criterio y general
+- Puntaje total automático
+
+7. MÓDULO DE REPORTES
+- Estadísticas generales del evento
+- Reporte de proyectos por categoría
+- Reporte de evaluaciones
+- Top proyectos por evaluación
+- Exportación de datos
+
+8. SISTEMA DE VOTACIÓN
+- Configuración de votación por evento
+- Votos por_like, estrellas o puntos
+- Límite de votos por usuario
+- Resultados en tiempo real
+
+9. ESCÁNER QR
+- Generación de códigos QR
+- Escaneo para registro de asistencia
+- Tipos: Sala, Actividad, Proyecto, Usuario, Evento
+
+10. SISTEMA DE LOGROS
+- Gamificación con puntos
+- Logros desbloqueables
+- Niveles de usuario
+
+11. CERTIFICADOS
+- Generación automática de certificados
+- Plantillas personalizables
+- Verificación por código único
+- Descarga en PDF
+
+12. CONFIGURACIÓN GLOBAL
+- Footer personalizable
+- Configuración de notificaciones
+- Tema claro/oscuro
+
+===========================================
+REQUISITOS DEL SISTEMA
+===========================================
+
+- Node.js 18+ o Bun runtime
+- SQLite (incluido)
+- 512MB RAM mínimo
+- 100MB espacio en disco
+
+===========================================
+CREDENCIALES DE PRUEBA
+===========================================
+
+Administrador:
+- Email: admin@fabricadeideas.com
+- Contraseña: admin123
+
+Organizador:
+- Email: organizer@fabricadeideas.com
+- Contraseña: org123
+
+Moderador:
+- Email: moderator@fabricadeideas.com
+- Contraseña: mod123
+
+Evaluador:
+- Email: evaluator@fabricadeideas.com
+- Contraseña: eval123
+
+Participante:
+- Email: user1@fabricadeideas.com
+- Contraseña: user123
+
+===========================================
+TECNOLOGÍAS
+===========================================
+
+- Next.js 16.1.3
+- React 19
+- TypeScript 5
+- Tailwind CSS 4
+- Prisma ORM
+- SQLite
+- shadcn/ui
+- Bun Runtime

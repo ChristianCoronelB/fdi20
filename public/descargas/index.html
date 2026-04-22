@@ -19,7 +19,7 @@
             background: white;
             border-radius: 24px;
             padding: 48px;
-            max-width: 650px;
+            max-width: 700px;
             width: 100%;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
             text-align: center;
@@ -184,6 +184,41 @@
             background: #10b981;
             color: white;
         }
+        .new-badge {
+            background: #10b981;
+            color: white;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 4px;
+            margin-left: 8px;
+            vertical-align: middle;
+        }
+        .whats-new {
+            background: #ecfdf5;
+            border: 1px solid #10b981;
+            border-radius: 12px;
+            padding: 16px;
+            text-align: left;
+            margin-bottom: 24px;
+        }
+        .whats-new h4 {
+            color: #065f46;
+            font-size: 14px;
+            margin-bottom: 12px;
+        }
+        .whats-new ul {
+            list-style: none;
+            padding-left: 0;
+        }
+        .whats-new li {
+            color: #047857;
+            font-size: 13px;
+            padding: 4px 0;
+        }
+        .whats-new li::before {
+            content: "→ ";
+            color: #10b981;
+        }
     </style>
 </head>
 <body>
@@ -194,7 +229,18 @@
             </svg>
         </div>
         <h1>Fábrica de Ideas</h1>
-        <div class="version">Versión v1.0.0 - Abril 2026</div>
+        <div class="version">Versión v2.1.4 - Abril 2026 <span class="new-badge">NUEVO</span></div>
+        
+        <div class="whats-new">
+            <h4>🆕 Novedades en v2.1.4</h4>
+            <ul>
+                <li>Módulo de Evaluación completo con rúbrica de 6 criterios</li>
+                <li>Módulo de Reportes con estadísticas y exportación</li>
+                <li>Footer global con configuración personalizable</li>
+                <li>Dashboard con resumen de proyectos ganadores</li>
+                <li>Correcciones de bugs y mejoras de rendimiento</li>
+            </ul>
+        </div>
         
         <div class="features">
             <h3>Características incluidas</h3>
@@ -209,7 +255,7 @@
                 <li>Escáner QR</li>
                 <li>Gamificación</li>
                 <li>Certificados</li>
-                <li>API REST</li>
+                <li>Módulo Reportes</li>
                 <li>Multi-rol</li>
             </ul>
         </div>
@@ -217,18 +263,18 @@
         <div class="fix-box">
             <h4>⚠️ ¿Error de Prisma?</h4>
             <p>Si ves el error <strong>"Cannot find module '@prisma/client-...'"</strong>, ejecuta:</p>
-            <code>npx prisma generate && npx prisma db push && npm run dev</code>
+            <code>bun run db:generate && bun run db:push && bun run dev</code>
         </div>
         
-        <a href="fabrica-de-ideas-descarga.zip" class="download-btn">
+        <a href="fabrica-de-ideas-v2.1.4-bun.zip" class="download-btn">
             <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
             </svg>
-            Descargar Aplicación
+            Descargar v2.1.4
         </a>
         
         <div class="info">
-            Archivo ZIP • ~654 KB • Listo para ejecutar con Bun/Node.js
+            Archivo ZIP • ~19 MB • Incluye base de datos SQLite • Listo para Bun runtime
         </div>
         
         <div class="credentials">
@@ -237,13 +283,14 @@
                 <tr><td>Admin:</td><td>admin@fabricadeideas.com / admin123</td></tr>
                 <tr><td>Organizador:</td><td>organizer@fabricadeideas.com / org123</td></tr>
                 <tr><td>Moderador:</td><td>moderator@fabricadeideas.com / mod123</td></tr>
+                <tr><td>Evaluador:</td><td>evaluator@fabricadeideas.com / eval123</td></tr>
                 <tr><td>Participante:</td><td>user1@fabricadeideas.com / user123</td></tr>
             </table>
         </div>
         
         <div class="links">
+            <a href="GUIA_INSTALACION_v2.1.4.md">Guía de Instalación v2.1.4</a>
             <a href="GUIA_ACTUALIZACIONES.md">Guía de Actualizaciones</a>
-            <a href="GUIA_INSTALACION.md">Guía de Instalación</a>
             <a href="VERSIONES.md">Historial de Versiones</a>
         </div>
     </div>
