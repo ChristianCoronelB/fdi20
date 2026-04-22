@@ -3734,6 +3734,14 @@ export default function FabricaDeIdeasApp() {
                     Evaluación
                   </Button>
                   <Button
+                    variant={activeTab === 'reports' ? 'secondary' : 'ghost'}
+                    className="w-full justify-start gap-3"
+                    onClick={() => setActiveTab('reports')}
+                  >
+                    <BarChart3 className="w-5 h-5" />
+                    Reportes
+                  </Button>
+                  <Button
                     variant={activeTab === 'certificates' ? 'secondary' : 'ghost'}
                     className="w-full justify-start gap-3"
                     onClick={() => setActiveTab('certificates')}
@@ -7187,6 +7195,272 @@ export default function FabricaDeIdeasApp() {
                   </div>
                 )}
 
+                {/* Reports Module */}
+                {activeTab === 'reports' && (
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h1 className="text-3xl font-bold">Reportes y Estadísticas</h1>
+                        <p className="text-muted-foreground">Análisis detallado del evento</p>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        className="gap-2"
+                        onClick={() => {
+                          // Generate report
+                          toast.success('Generando reporte...');
+                        }}
+                      >
+                        <Download className="w-4 h-4" />
+                        Exportar Reporte
+                      </Button>
+                    </div>
+
+                    {/* Summary Stats */}
+                    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                      <Card className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white">
+                        <CardContent className="pt-6">
+                          <div className="flex items-center gap-4">
+                            <Users className="w-8 h-8 opacity-80" />
+                            <div>
+                              <p className="text-sm opacity-90">Total Participantes</p>
+                              <p className="text-3xl font-bold">{dashboardStats.totalUsers}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-gradient-to-br from-blue-500 to-indigo-600 text-white">
+                        <CardContent className="pt-6">
+                          <div className="flex items-center gap-4">
+                            <Presentation className="w-8 h-8 opacity-80" />
+                            <div>
+                              <p className="text-sm opacity-90">Actividades</p>
+                              <p className="text-3xl font-bold">{dashboardStats.totalActivities}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-gradient-to-br from-amber-500 to-orange-600 text-white">
+                        <CardContent className="pt-6">
+                          <div className="flex items-center gap-4">
+                            <Lightbulb className="w-8 h-8 opacity-80" />
+                            <div>
+                              <p className="text-sm opacity-90">Proyectos</p>
+                              <p className="text-3xl font-bold">{dashboardStats.totalProjects}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                      <Card className="bg-gradient-to-br from-purple-500 to-pink-600 text-white">
+                        <CardContent className="pt-6">
+                          <div className="flex items-center gap-4">
+                            <Vote className="w-8 h-8 opacity-80" />
+                            <div>
+                              <p className="text-sm opacity-90">Total Votos</p>
+                              <p className="text-3xl font-bold">{dashboardStats.totalVotes}</p>
+                            </div>
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Charts Row */}
+                    <div className="grid gap-6 lg:grid-cols-2">
+                      {/* Projects by Category */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <PieChart className="w-5 h-5" />
+                            Proyectos por Categoría
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            {(() => {
+                              const categories = [...new Set(projects.filter(p => p.category).map(p => p.category))];
+                              if (categories.length === 0) {
+                                return <p className="text-center text-muted-foreground py-4">No hay categorías</p>;
+                              }
+                              const maxCount = Math.max(...categories.map(cat => projects.filter(p => p.category === cat).length));
+                              return categories.map((category) => {
+                                const count = projects.filter(p => p.category === category).length;
+                                const percentage = Math.round((count / projects.length) * 100);
+                                return (
+                                  <div key={category} className="space-y-1">
+                                    <div className="flex justify-between text-sm">
+                                      <span>{category}</span>
+                                      <span className="text-muted-foreground">{count} ({percentage}%)</span>
+                                    </div>
+                                    <Progress value={(count / maxCount) * 100} className="h-2" />
+                                  </div>
+                                );
+                              });
+                            })()}
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Projects by Status */}
+                      <Card>
+                        <CardHeader>
+                          <CardTitle className="flex items-center gap-2">
+                            <BarChart3 className="w-5 h-5" />
+                            Proyectos por Estado
+                          </CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                          <div className="space-y-3">
+                            {[
+                              { status: 'APPROVED', label: 'Aprobados', color: 'bg-emerald-500' },
+                              { status: 'DRAFT', label: 'Borradores', color: 'bg-amber-500' },
+                              { status: 'FINALIST', label: 'Finalistas', color: 'bg-purple-500' },
+                              { status: 'WINNER', label: 'Ganadores', color: 'bg-yellow-500' },
+                            ].map(({ status, label, color }) => {
+                              const count = projects.filter(p => p.status === status).length;
+                              const percentage = projects.length > 0 ? Math.round((count / projects.length) * 100) : 0;
+                              return (
+                                <div key={status} className="flex items-center gap-3">
+                                  <div className={cn("w-3 h-3 rounded-full", color)} />
+                                  <span className="flex-1 text-sm">{label}</span>
+                                  <span className="font-medium">{count}</span>
+                                  <span className="text-sm text-muted-foreground">({percentage}%)</span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    </div>
+
+                    {/* Evaluations Summary */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Star className="w-5 h-5" />
+                          Resumen de Evaluaciones
+                        </CardTitle>
+                        <CardDescription>Estado de las evaluaciones de proyectos</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="grid gap-4 md:grid-cols-3">
+                          <div className="text-center p-4 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
+                            <CheckCircle className="w-8 h-8 mx-auto text-emerald-500 mb-2" />
+                            <p className="text-2xl font-bold">{evaluations.filter(e => e.status === 'SUBMITTED').length}</p>
+                            <p className="text-sm text-muted-foreground">Evaluaciones Completadas</p>
+                          </div>
+                          <div className="text-center p-4 bg-amber-50 dark:bg-amber-900/20 rounded-lg">
+                            <FileText className="w-8 h-8 mx-auto text-amber-500 mb-2" />
+                            <p className="text-2xl font-bold">{evaluations.filter(e => e.status === 'DRAFT').length}</p>
+                            <p className="text-sm text-muted-foreground">Borradores</p>
+                          </div>
+                          <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                            <Clock className="w-8 h-8 mx-auto text-blue-500 mb-2" />
+                            <p className="text-2xl font-bold">{projects.filter(p => p.status === 'APPROVED').length - evaluations.filter(e => e.status === 'SUBMITTED').length}</p>
+                            <p className="text-sm text-muted-foreground">Pendientes</p>
+                          </div>
+                        </div>
+
+                        {/* Average scores by criteria */}
+                        {evaluations.length > 0 && (
+                          <div className="mt-6">
+                            <h4 className="font-semibold mb-4">Puntuación Promedio por Criterio</h4>
+                            <div className="grid gap-3 md:grid-cols-2">
+                              {evaluationCriteria.map((criterion) => {
+                                const avgScore = evaluations.length > 0
+                                  ? evaluations.reduce((sum, e) => sum + (e[criterion.key as keyof Evaluation] as number || 0), 0) / evaluations.filter(e => e.status === 'SUBMITTED').length
+                                  : 0;
+                                return (
+                                  <div key={criterion.key} className="flex items-center gap-3">
+                                    <span className="text-sm flex-1">{criterion.label}</span>
+                                    <div className="flex items-center gap-2">
+                                      <Progress value={avgScore * 10} className="w-24 h-2" />
+                                      <span className="text-sm font-medium w-10">{avgScore.toFixed(1)}</span>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+
+                    {/* Top Projects by Evaluation */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Trophy className="w-5 h-5 text-amber-500" />
+                          Top 10 Proyectos por Puntuación
+                        </CardTitle>
+                        <CardDescription>Mejores proyectos según evaluaciones</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-2">
+                          {projects
+                            .filter(p => p.status === 'APPROVED')
+                            .sort((a, b) => (b.averageEvaluation || b.averageScore || 0) - (a.averageEvaluation || a.averageScore || 0))
+                            .slice(0, 10)
+                            .map((project, index) => (
+                              <div 
+                                key={project.id} 
+                                className={cn(
+                                  "flex items-center gap-3 p-3 rounded-lg border",
+                                  index === 0 && "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800",
+                                  index === 1 && "bg-gray-50 dark:bg-gray-800/50 border-gray-200 dark:border-gray-700",
+                                  index === 2 && "bg-orange-50 dark:bg-orange-950/30 border-orange-200 dark:border-orange-800"
+                                )}
+                              >
+                                <div className={cn(
+                                  "w-8 h-8 rounded-full flex items-center justify-center font-bold text-white text-sm",
+                                  index === 0 ? "bg-amber-500" : index === 1 ? "bg-gray-400" : index === 2 ? "bg-orange-600" : "bg-gray-300 dark:bg-gray-600"
+                                )}>
+                                  {index + 1}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="font-medium truncate">{project.name}</p>
+                                  <p className="text-xs text-muted-foreground">{project.team} • {project.category || 'Sin categoría'}</p>
+                                </div>
+                                <div className="text-right">
+                                  <div className="flex items-center gap-1 font-bold text-amber-600">
+                                    <Star className="w-4 h-4 fill-amber-500" />
+                                    {project.averageEvaluation?.toFixed(1) || project.averageScore?.toFixed(1) || '0.0'}
+                                  </div>
+                                  <p className="text-xs text-muted-foreground">{project.totalVotes} votos</p>
+                                </div>
+                              </div>
+                            ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+
+                    {/* Activities Attendance */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Activity className="w-5 h-5" />
+                          Asistencia a Actividades
+                        </CardTitle>
+                        <CardDescription>Resumen de asistencia por actividad</CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-3">
+                          {activities.slice(0, 10).map((activity) => (
+                            <div key={activity.id} className="flex items-center gap-3">
+                              <div className={cn("w-3 h-3 rounded-full", getActivityTypeColor(activity.type))} />
+                              <span className="flex-1 text-sm truncate">{activity.title}</span>
+                              <span className="text-sm text-muted-foreground">{formatDate(activity.startTime)}</span>
+                              <div className="flex items-center gap-2">
+                                <Users className="w-4 h-4 text-muted-foreground" />
+                                <span className="font-medium">{activity.currentAttendance}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </div>
+                )}
+
                 {/* Settings */}
                 {activeTab === 'settings' && (
                   <div className="space-y-6">
@@ -10179,6 +10453,51 @@ export default function FabricaDeIdeasApp() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Global Footer */}
+      <footer className="hidden lg:block border-t bg-white dark:bg-gray-900 py-4 px-6">
+        <div className="flex items-center justify-between text-sm text-muted-foreground">
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className="w-6 h-6 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+                <Lightbulb className="w-3.5 h-3.5 text-white" />
+              </div>
+              <span className="font-semibold bg-gradient-to-r from-emerald-600 to-teal-600 bg-clip-text text-transparent">
+                Fábrica de Ideas
+              </span>
+            </div>
+            <span>© 2024 Todos los derechos reservados</span>
+          </div>
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="gap-2 text-muted-foreground hover:text-foreground"
+              onClick={() => setActiveTab('settings')}
+            >
+              <Settings className="w-4 h-4" />
+              Configuración
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="gap-2 text-muted-foreground hover:text-foreground"
+              onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
+            >
+              {theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              {theme === 'dark' ? 'Modo Claro' : 'Modo Oscuro'}
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="gap-2 text-muted-foreground hover:text-foreground"
+            >
+              <Shield className="w-4 h-4" />
+              LOPDP
+            </Button>
+          </div>
+        </div>
+      </footer>
 
       {/* Add bottom padding for mobile nav */}
       <div className="h-16 lg:hidden" />
