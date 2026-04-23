@@ -1,7 +1,57 @@
 Fábrica de Ideas - Plataforma de Gestión de Eventos
-Versión: v2.1.4-20260422
-Fecha: 22 de Abril de 2026
+Versión: v2.1.5-20260423
+Fecha: 23 de Abril de 2026
 Autor: Z.ai Code
+
+===========================================
+NOVEDADES v2.1.5
+===========================================
+
+1. MÓDULO DE CONFIGURACIÓN MEJORADO
+   - Campo de configuración de Zona Horaria
+   - Campo de texto para Footer personalizado
+   - Todas las fechas/horas usan la zona horaria configurada
+
+2. GESTIÓN DE ACTIVIDADES ACTUALIZADA
+   - Nuevo campo "Expositor" para cada actividad
+   - Opción "Charla Magistral" añadida a tipos de actividad
+   - Formulario de edición corregido con todos los campos
+   - Botón guardar funcional
+
+3. AGENDA DE EVENTOS MEJORADA
+   - Etiquetas de estado dinámicas según hora actual:
+     * "En Curso" - actividad en progreso
+     * "Finalizado" - actividad terminada
+     * "Próximo" - actividad pendiente
+   - Visualización del Expositor en listado
+
+4. FOOTER GLOBAL
+   - Texto de footer configurable desde administración
+   - Visible en todas las interfaces de la aplicación
+
+5. MÓDULO DE EVALUACIÓN DE PROYECTOS
+   - Solo Evaluadores y Administradores pueden evaluar
+   - Admin asigna proyectos a cada evaluador
+   - Rúbrica con 6 criterios (100 puntos total):
+     * Innovación y Creatividad (20 pts)
+     * Viabilidad del Negocio (15 pts)
+     * Impacto Social/Ambiental (15 pts)
+     * Pitch (20 pts)
+     * Potencial de Escalamiento (10 pts)
+     * Entregable (20 pts)
+   - Tooltips con descripciones y requerimientos
+
+6. MÓDULO DE REPORTES
+   - Solo para rol Administrador
+   - Estadísticas generadas automáticamente
+   - Listados disponibles:
+     * Proyectos registrados
+     * Ganadores por categoría
+     * Proyectos por puntaje
+     * Participantes
+     * Actividades
+     * Salas
+     * Proyectos más votados
 
 ===========================================
 CARACTERÍSTICAS PRINCIPALES
@@ -29,6 +79,7 @@ CARACTERÍSTICAS PRINCIPALES
 - Asignación de salas y expositores
 - Control de capacidad
 - Estados: Programado, En Progreso, Completado, Cancelado
+- Tipos: Conferencia, Charla Magistral, Taller, Panel, Presentación, Networking, Descanso
 
 5. GESTIÓN DE PROYECTOS
 - Registro de proyectos participantes
@@ -37,13 +88,7 @@ CARACTERÍSTICAS PRINCIPALES
 - Información del equipo y líder
 
 6. MÓDULO DE EVALUACIÓN
-- Rúbrica de evaluación con 6 criterios:
-  * Innovación y Creatividad (20%)
-  * Viabilidad del Negocio (15%)
-  * Impacto Social/Ambiental (15%)
-  * Presentación y Comunicación (20%)
-  * Potencial de Escalamiento (15%)
-  * Equipo y Ejecución (15%)
+- Rúbrica de evaluación con 6 criterios (100 pts)
 - Asignación de proyectos a evaluadores
 - Comentarios por criterio y general
 - Puntaje total automático
@@ -57,7 +102,7 @@ CARACTERÍSTICAS PRINCIPALES
 
 8. SISTEMA DE VOTACIÓN
 - Configuración de votación por evento
-- Votos por_like, estrellas o puntos
+- Votos por like, estrellas o puntos
 - Límite de votos por usuario
 - Resultados en tiempo real
 
@@ -78,6 +123,7 @@ CARACTERÍSTICAS PRINCIPALES
 - Descarga en PDF
 
 12. CONFIGURACIÓN GLOBAL
+- Zona horaria configurable
 - Footer personalizable
 - Configuración de notificaciones
 - Tema claro/oscuro
