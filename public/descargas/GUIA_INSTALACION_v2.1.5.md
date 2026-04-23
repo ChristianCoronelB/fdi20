@@ -35,16 +35,26 @@ curl -fsSL https://bun.sh/install | bash
 
 Descomprime `fabrica-de-ideas-v2.1.5-bun.zip` en la ubicación deseada.
 
-### Paso 3: Instalar dependencias
+### Paso 3: Configurar variables de entorno
+
+Crea un archivo `.env` en la raíz del proyecto (puedes copiar el archivo `.env.example`):
 
 ```bash
-cd fabrica-de-ideas
-bun install
+cp .env.example .env
 ```
 
-### Paso 4: Configurar la base de datos
+O crea el archivo `.env` manualmente con el siguiente contenido:
+
+```env
+DATABASE_URL="file:./db/fabrica.db"
+NEXTAUTH_SECRET="tu-secreto-muy-seguro"
+NEXTAUTH_URL="http://localhost:3000"
+```
+
+### Paso 4: Instalar dependencias y configurar base de datos
 
 ```bash
+bun install
 bun run db:push
 bun run db:seed
 ```
@@ -61,21 +71,31 @@ La aplicación estará disponible en: **http://localhost:3000**
 
 ## 🔧 Instalación con Node.js
 
-### Paso 1: Instalar dependencias
+### Paso 1: Configurar variables de entorno
+
+Crea un archivo `.env` en la raíz del proyecto:
+
+```env
+DATABASE_URL="file:./db/fabrica.db"
+NEXTAUTH_SECRET="tu-secreto-muy-seguro"
+NEXTAUTH_URL="http://localhost:3000"
+```
+
+### Paso 2: Instalar dependencias
 
 ```bash
 cd fabrica-de-ideas
 npm install
 ```
 
-### Paso 2: Configurar base de datos
+### Paso 3: Configurar base de datos
 
 ```bash
 npm run db:push
 npm run db:seed
 ```
 
-### Paso 3: Iniciar la aplicación
+### Paso 4: Iniciar la aplicación
 
 ```bash
 npm run dev
