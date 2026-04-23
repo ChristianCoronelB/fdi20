@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 import { getSession, hasRole } from '@/lib/auth';
 import { UserRole } from '@prisma/client';
-import { hash } from 'bcrypt';
+import { hash } from 'bcryptjs';
 
 // GET: List users (admin only, with pagination)
 export async function GET(request: NextRequest) {
