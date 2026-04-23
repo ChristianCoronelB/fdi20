@@ -42,9 +42,15 @@ export async function GET(request: NextRequest) {
     }
 
     if (search) {
+      // SQLite doesn't support mode: 'insensitive', so we use a workaround
+      const searchLower = search.toLowerCase();
       where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
+        { name: { contains: search } },
+        { email: { contains: search } },
+        { name: { contains: searchLower } },
+        { email: { contains: searchLower } },
+        { name: { contains: search.toUpperCase() } },
+        { email: { contains: search.toUpperCase() } },
       ];
     }
 
