@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
-import { getServerSession } from '@/lib/auth';
+import { getSession } from '@/lib/auth';
 
 // GET - Obtener asignaciones de evaluadores
 export async function GET(request: NextRequest) {
   try {
-    const session = await getServerSession();
+    const session = await getSession();
     
     if (!session) {
       return NextResponse.json(
@@ -66,7 +66,7 @@ export async function GET(request: NextRequest) {
 // POST - Crear asignación de evaluador (solo ADMIN)
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession();
+    const session = await getSession();
     
     if (!session || (session.role !== 'ADMIN' && session.role !== 'ORGANIZER')) {
       return NextResponse.json(
@@ -154,7 +154,7 @@ export async function POST(request: NextRequest) {
 // DELETE - Eliminar asignación
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession();
+    const session = await getSession();
     
     if (!session || (session.role !== 'ADMIN' && session.role !== 'ORGANIZER')) {
       return NextResponse.json(

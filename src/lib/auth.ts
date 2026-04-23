@@ -136,9 +136,6 @@ export async function register(data: {
   return { user, token };
 }
 
-// Alias for backwards compatibility
-export const getServerSession = getSession;
-
 export function hasRole(userRole: UserRole, allowedRoles: UserRole[]): boolean {
   const roleHierarchy: Record<UserRole, number> = {
     ADMIN: 5,
