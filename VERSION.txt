@@ -1,57 +1,34 @@
 Fábrica de Ideas - Plataforma de Gestión de Eventos
-Versión: v2.1.5-20260423
+Versión: v2.2.0-20260423
 Fecha: 23 de Abril de 2026
 Autor: Z.ai Code
 
 ===========================================
-NOVEDADES v2.1.5
+NOVEDADES v2.2.0
 ===========================================
 
-1. MÓDULO DE CONFIGURACIÓN MEJORADO
-   - Campo de configuración de Zona Horaria
-   - Campo de texto para Footer personalizado
-   - Todas las fechas/horas usan la zona horaria configurada
+1. MÓDULO DE USUARIOS CORREGIDO
+   - Botón "Guardar Cambios" ahora guarda en la base de datos
+   - Filtro de búsqueda de usuarios funcional
+   - Edición de usuarios desde la lista de administración
+   - Actualización de roles y estados persiste correctamente
 
-2. GESTIÓN DE ACTIVIDADES ACTUALIZADA
-   - Nuevo campo "Expositor" para cada actividad
-   - Opción "Charla Magistral" añadida a tipos de actividad
-   - Formulario de edición corregido con todos los campos
-   - Botón guardar funcional
+2. MÓDULO DE ACTIVIDADES CORREGIDO
+   - Botón "Grabar" guarda toda la información en la base de datos
+   - Todos los campos se guardan correctamente: título, descripción, tipo, sala, fechas, expositor, capacidad
+   - Edición de actividades persiste correctamente
+   - eventId dinámico (no hardcodeado)
 
-3. AGENDA DE EVENTOS MEJORADA
-   - Etiquetas de estado dinámicas según hora actual:
-     * "En Curso" - actividad en progreso
-     * "Finalizado" - actividad terminada
-     * "Próximo" - actividad pendiente
-   - Visualización del Expositor en listado
+3. MÓDULO DE EVALUACIÓN ACTIVADO
+   - Formulario de evaluación visible al hacer click en "Evaluar"
+   - Formulario de nueva asignación visible al hacer click en "Nueva Asignación"
+   - Búsqueda de proyectos en asignaciones funcional
+   - Compatible con roles: EVALUATOR, ADMIN, ORGANIZER
 
-4. FOOTER GLOBAL
-   - Texto de footer configurable desde administración
-   - Visible en todas las interfaces de la aplicación
-
-5. MÓDULO DE EVALUACIÓN DE PROYECTOS
-   - Solo Evaluadores y Administradores pueden evaluar
-   - Admin asigna proyectos a cada evaluador
-   - Rúbrica con 6 criterios (100 puntos total):
-     * Innovación y Creatividad (20 pts)
-     * Viabilidad del Negocio (15 pts)
-     * Impacto Social/Ambiental (15 pts)
-     * Pitch (20 pts)
-     * Potencial de Escalamiento (10 pts)
-     * Entregable (20 pts)
-   - Tooltips con descripciones y requerimientos
-
-6. MÓDULO DE REPORTES
-   - Solo para rol Administrador
-   - Estadísticas generadas automáticamente
-   - Listados disponibles:
-     * Proyectos registrados
-     * Ganadores por categoría
-     * Proyectos por puntaje
-     * Participantes
-     * Actividades
-     * Salas
-     * Proyectos más votados
+4. FOOTER GLOBAL IMPLEMENTADO
+   - Footer visible desde la pantalla de login
+   - Footer configurable desde módulo de configuración
+   - Texto dinámico desde appConfig.footerText
 
 ===========================================
 CARACTERÍSTICAS PRINCIPALES
@@ -68,6 +45,7 @@ CARACTERÍSTICAS PRINCIPALES
 - Roles: Admin, Organizador, Moderador, Evaluador, Participante
 - Perfil de usuario con cambio de contraseña
 - Sistema de puntos y niveles
+- Búsqueda y filtros funcionales
 
 3. GESTIÓN DE EVENTOS
 - Crear y administrar eventos
@@ -90,6 +68,7 @@ CARACTERÍSTICAS PRINCIPALES
 6. MÓDULO DE EVALUACIÓN
 - Rúbrica de evaluación con 6 criterios (100 pts)
 - Asignación de proyectos a evaluadores
+- Búsqueda de proyectos
 - Comentarios por criterio y general
 - Puntaje total automático
 
@@ -169,7 +148,7 @@ TECNOLOGÍAS
 - React 19
 - TypeScript 5
 - Tailwind CSS 4
-- Prisma ORM
+- Prisma ORM 6.x
 - SQLite
 - shadcn/ui
 - Bun Runtime

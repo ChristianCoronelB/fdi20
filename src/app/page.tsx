@@ -852,72 +852,65 @@ export default function FabricaDeIdeasApp() {
         return;
       }
 
-      // For demo purposes, create activity locally if API fails
-      const newActivity: Activity = {
-        id: `activity-${Date.now()}`,
-        title: activityForm.title,
-        description: activityForm.description,
-        type: activityForm.type,
-        status: 'SCHEDULED',
-        startTime: startDateTime,
-        endTime: endDateTime,
-        room: rooms.find(r => r.id === roomId) || rooms[0],
-        currentAttendance: 0,
-      };
-
-      // Try to save to API
-      try {
-        const res = await fetch('/api/activities', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            title: activityForm.title,
-            description: activityForm.description,
-            type: activityForm.type,
-            roomId: roomId,
-            startTime: startDateTime,
-            endTime: endDateTime,
-            maxCapacity: activityForm.maxCapacity ? parseInt(activityForm.maxCapacity) : null,
-            theme: activityForm.theme,
-            expositorName: activityForm.expositorName,
-            status: 'SCHEDULED',
-            eventId: '1', // Default event ID for demo
-          }),
-        });
-
-        const data = await res.json();
-        
-        if (data.success && data.data) {
-          // Use the activity from API response
-          newActivity.id = data.data.id;
-          newActivity.startTime = data.data.startTime;
-          newActivity.endTime = data.data.endTime;
-        }
-      } catch (apiError) {
-        console.log('API not available, using local state');
+      // Get eventId from selected event or first event in list
+      const eventId = selectedEvent?.id || eventsList[0]?.id;
+      
+      if (!eventId) {
+        toast.error('No hay evento activo. Selecciona o crea un evento primero.');
+        setSavingActivity(false);
+        return;
       }
-      
-      // Add the new activity to the list (works with or without API)
-      setActivities(prev => [...prev, newActivity]);
-      
-      // Reset form and close dialog
-      setActivityForm({
-        title: '',
-        description: '',
-        type: 'PRESENTATION',
-        roomId: '',
-        startTime: '',
-        endTime: '',
-        date: '',
-        maxCapacity: '',
-        theme: '',
-        speakerId: '',
-        expositorName: '',
-        generateQr: true,
+
+      // Save to API
+      const res = await fetch('/api/activities', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: activityForm.title,
+          description: activityForm.description,
+          type: activityForm.type,
+          roomId: roomId,
+          startTime: startDateTime,
+          endTime: endDateTime,
+          maxCapacity: activityForm.maxCapacity ? parseInt(activityForm.maxCapacity) : null,
+          theme: activityForm.theme,
+          expositorName: activityForm.expositorName,
+          status: 'SCHEDULED',
+          eventId: eventId,
+        }),
       });
-      setActivityDialogOpen(false);
+
+      const data = await res.json();
       
-      toast.success('¡Actividad creada exitosamente!');
+      if (data.success && data.data) {
+        // Add the new activity to the list from API response
+        const newActivity: Activity = {
+          ...data.data,
+          currentAttendance: 0,
+        };
+        setActivities(prev => [...prev, newActivity]);
+        
+        // Reset form and close dialog
+        setActivityForm({
+          title: '',
+          description: '',
+          type: 'PRESENTATION',
+          roomId: '',
+          startTime: '',
+          endTime: '',
+          date: '',
+          maxCapacity: '',
+          theme: '',
+          speakerId: '',
+          expositorName: '',
+          generateQr: true,
+        });
+        setActivityDialogOpen(false);
+        
+        toast.success('¡Actividad creada exitosamente!');
+      } else {
+        toast.error(data.error || 'Error al crear actividad');
+      }
     } catch (error) {
       console.error('Error creating activity:', error);
       toast.error('Error al crear actividad. Intenta de nuevo.');
@@ -1049,6 +1042,7 @@ export default function FabricaDeIdeasApp() {
           status: selectedActivityForEdit.status,
           expositorName: activityForm.expositorName,
           theme: activityForm.theme,
+          maxCapacity: activityForm.maxCapacity ? parseInt(activityForm.maxCapacity) : undefined,
         }),
       });
 
@@ -1414,15 +1408,15 @@ export default function FabricaDeIdeasApp() {
     setCreatingUser(false);
   };
 
-  // Handle edit user
-  const handleEditUser = (entry: { name: string; points: number; level: number }, index: number) => {
+  // Handle edit user - from usersList (admin view)
+  const handleEditUserFromList = (userItem: User) => {
     const userData = {
-      id: `user-${index}`,
-      name: entry.name,
-      email: `${entry.name.toLowerCase().replace(' ', '.')}@email.com`,
-      role: 'PARTICIPANT',
-      points: entry.points,
-      level: entry.level,
+      id: userItem.id,
+      name: userItem.name,
+      email: userItem.email,
+      role: userItem.role,
+      points: userItem.points,
+      level: userItem.level,
       status: 'active',
     };
     setSelectedUser(userData);
@@ -1435,19 +1429,71 @@ export default function FabricaDeIdeasApp() {
     setEditUserDialogOpen(true);
   };
 
-  // Handle view user
-  const handleViewUser = (entry: { name: string; points: number; level: number }, index: number) => {
+  // Handle view user - from usersList (admin view)
+  const handleViewUserFromList = (userItem: User) => {
     const userData = {
-      id: `user-${index}`,
-      name: entry.name,
-      email: `${entry.name.toLowerCase().replace(' ', '.')}@email.com`,
-      role: 'PARTICIPANT',
-      points: entry.points,
-      level: entry.level,
+      id: userItem.id,
+      name: userItem.name,
+      email: userItem.email,
+      role: userItem.role,
+      points: userItem.points,
+      level: userItem.level,
       status: 'active',
     };
     setSelectedUser(userData);
     setViewUserDialogOpen(true);
+  };
+
+  // Handle edit user - from leaderboard (legacy)
+  const handleEditUser = (entry: { name: string; points: number; level: number }, index: number) => {
+    // Try to find the user in usersList by name and points
+    const foundUser = usersList.find(u => u.name === entry.name && u.points === entry.points);
+    
+    if (foundUser) {
+      handleEditUserFromList(foundUser);
+    } else {
+      // Fallback to creating mock data if not found in usersList
+      const userData = {
+        id: `user-${index}`,
+        name: entry.name,
+        email: `${entry.name.toLowerCase().replace(/\s+/g, '.')}@email.com`,
+        role: 'PARTICIPANT' as const,
+        points: entry.points,
+        level: entry.level,
+        status: 'active',
+      };
+      setSelectedUser(userData);
+      setEditUserForm({
+        name: userData.name,
+        email: userData.email,
+        role: userData.role,
+        status: userData.status,
+      });
+      setEditUserDialogOpen(true);
+    }
+  };
+
+  // Handle view user
+  const handleViewUser = (entry: { name: string; points: number; level: number }, index: number) => {
+    // Try to find the user in usersList by name and points
+    const foundUser = usersList.find(u => u.name === entry.name && u.points === entry.points);
+    
+    if (foundUser) {
+      handleViewUserFromList(foundUser);
+    } else {
+      // Fallback to creating mock data if not found in usersList
+      const userData = {
+        id: `user-${index}`,
+        name: entry.name,
+        email: `${entry.name.toLowerCase().replace(/\s+/g, '.')}@email.com`,
+        role: 'PARTICIPANT' as const,
+        points: entry.points,
+        level: entry.level,
+        status: 'active',
+      };
+      setSelectedUser(userData);
+      setViewUserDialogOpen(true);
+    }
   };
 
   // Save user changes
@@ -1456,12 +1502,37 @@ export default function FabricaDeIdeasApp() {
     
     setSavingUser(true);
     
-    // Simulate saving
-    await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      const res = await fetch(`/api/users/${selectedUser.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: editUserForm.name,
+          role: editUserForm.role,
+        }),
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        // Update the usersList state
+        setUsersList(prev => prev.map(u => 
+          u.id === selectedUser.id 
+            ? { ...u, name: editUserForm.name, role: editUserForm.role as User['role'] }
+            : u
+        ));
+        
+        setEditUserDialogOpen(false);
+        toast.success(`Usuario "${editUserForm.name}" actualizado correctamente`);
+      } else {
+        toast.error(data.error || 'Error al actualizar usuario');
+      }
+    } catch (error) {
+      console.error('Error saving user:', error);
+      toast.error('Error al guardar los cambios');
+    }
     
-    setEditUserDialogOpen(false);
     setSavingUser(false);
-    toast.success(`Usuario "${editUserForm.name}" actualizado correctamente`);
   };
 
   // Map states
@@ -2531,7 +2602,7 @@ export default function FabricaDeIdeasApp() {
 
   // Load user's evaluations
   const loadUserEvaluations = async () => {
-    if (!user || user.role !== 'EVALUATOR') return;
+    if (!user || (user.role !== 'EVALUATOR' && user.role !== 'ADMIN' && user.role !== 'ORGANIZER')) return;
     
     setLoadingEvaluations(true);
     try {
@@ -2755,9 +2826,9 @@ export default function FabricaDeIdeasApp() {
     );
   };
 
-  // Load evaluations when user is evaluator
+  // Load evaluations when user is evaluator, admin, or organizer
   useEffect(() => {
-    if (user && user.role === 'EVALUATOR') {
+    if (user && (user.role === 'EVALUATOR' || user.role === 'ADMIN' || user.role === 'ORGANIZER')) {
       loadUserEvaluations();
     }
   }, [user]);
@@ -3586,8 +3657,13 @@ export default function FabricaDeIdeasApp() {
         </main>
 
         {/* Footer */}
-        <footer className="py-6 text-center text-sm text-muted-foreground">
-          <p>© 2024 Fábrica de Ideas. Todos los derechos reservados.</p>
+        <footer className="py-6 text-center text-sm text-muted-foreground mt-auto">
+          <div className="flex items-center justify-center gap-2">
+            <div className="w-5 h-5 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center">
+              <Lightbulb className="w-3 h-3 text-white" />
+            </div>
+            <span>{appConfig.footerText}</span>
+          </div>
         </footer>
       </div>
     );
