@@ -331,8 +331,8 @@ model Evaluation {
   scalability           Int      @default(0)    // Potencial de Escalamiento (10%)
   scalabilityComment    String?
   
-  deliverable           Int      @default(0)    // Entregable (20%)
-  deliverableComment    String?
+  execution             Int      @default(0)    // Equipo y Ejecución (20%)
+  executionComment      String?
   
   // Campos calculados
   totalScore            Float    @default(0)    // Puntaje total ponderado
