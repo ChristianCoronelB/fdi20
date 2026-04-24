@@ -1,17 +1,34 @@
 Fábrica de Ideas - Plataforma de Gestión de Eventos
-Versión: v2.2.1-20260424
+Versión: v2.2.2-20260424
 Fecha: 24 de Abril de 2026
 Autor: Z.ai Code
 
 ===========================================
-NOVEDADES v2.2.1
+NOVEDADES v2.2.2 - CORRECCIÓN DEFINITIVA
 ===========================================
 
-1. CORRECCIÓN DEL ENUM ACTIVITYTYPE
-   - Agregados tipos de actividad faltantes: CHARLA_MAGISTRAL, PITCH, CEREMONY
+1. ENUM ACTIVITYTYPE COMPLETO
+   - Agregados TODOS los tipos de actividad:
+     * KEYNOTE - Conferencia
+     * KEYNOTE_SPEECH - Discurso Principal
+     * CHARLA_MAGISTRAL - Charla Magistral
+     * WORKSHOP - Workshop
+     * TALLER - Taller
+     * PANEL - Panel
+     * PRESENTATION - Presentación
+     * PITCH - Pitch
+     * NETWORKING - Networking
+     * BREAK - Descanso
+     * CEREMONY - Ceremonia
+     * CONFERENCIA - Conferencia
+     * MESA_REDONDA - Mesa Redonda
+     * FORO - Foro
+     * SEMINARIO - Seminario
+     * CURSO - Curso
+     * OTRO - Otro
+     * OTHER - Other
    - Corregido error de Prisma Studio al leer tabla Activity
-   - Mejor manejo de errores en API de actividades
-   - Selectores de tipo de actividad actualizados
+   - Selectores de tipo actualizados en frontend
 
 2. MÓDULO DE EVALUACIÓN ACTIVO
    - Asignación de proyectos a evaluadores funcional
@@ -22,16 +39,15 @@ NOVEDADES v2.2.1
      * Pitch - Presentación y Comunicación (20%)
      * Potencial de Escalamiento (10%)
      * Entregable - Poster, PMV, Producto o Servicio (20%)
-   - Búsqueda de proyectos en asignaciones
-   - Comentarios por criterio y general
    - Puntaje total automático sobre 100 puntos
 
-3. ESTABILIDAD GENERAL
-   - Correcciones en el manejo de tipos de actividad
-   - Mejoras en la gestión de errores de API
+3. GUARDADO DE ACTIVIDADES CORREGIDO
+   - Todos los campos se guardan correctamente
+   - Selectores con todos los tipos de actividad
+   - Mejor manejo de errores
 
 ===========================================
-INSTALACIÓN RÁPIDA
+INSTALACIÓN EN SERVIDOR LOCAL
 ===========================================
 
 1. Descomprime este archivo
@@ -42,6 +58,28 @@ INSTALACIÓN RÁPIDA
 6. Ejecuta: bun run db:seed
 7. Ejecuta: bun run dev
 8. Abre: http://localhost:3000
+
+IMPORTANTE: Si tienes una base de datos existente con tipos
+de actividad que no están en el enum, debes:
+
+Opción A - Actualizar los datos existentes:
+```sql
+-- En Prisma Studio o SQLite CLI
+UPDATE activities SET type = 'PRESENTATION' WHERE type = 'CHARLA_MAGISTRAL';
+UPDATE activities SET type = 'PRESENTATION' WHERE type = 'PITCH';
+UPDATE activities SET type = 'OTHER' WHERE type NOT IN (
+  'KEYNOTE', 'KEYNOTE_SPEECH', 'CHARLA_MAGISTRAL', 'WORKSHOP', 'TALLER',
+  'PANEL', 'PRESENTATION', 'PITCH', 'NETWORKING', 'BREAK', 'CEREMONY',
+  'CONFERENCIA', 'MESA_REDONDA', 'FORO', 'SEMINARIO', 'CURSO', 'OTRO', 'OTHER'
+);
+```
+
+Opción B - Empezar con base de datos limpia:
+```bash
+rm -f prisma/db/custom.db
+bun run db:push
+bun run db:seed
+```
 
 ===========================================
 CREDENCIALES POR DEFECTO

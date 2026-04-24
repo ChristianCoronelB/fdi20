@@ -21,11 +21,22 @@ export const getStatusColor = (status: string) => {
 export const getActivityTypeColor = (type: string) => {
   const colors: Record<string, string> = {
     KEYNOTE: 'bg-purple-500',
+    KEYNOTE_SPEECH: 'bg-purple-600',
+    CHARLA_MAGISTRAL: 'bg-purple-700',
     WORKSHOP: 'bg-blue-500',
+    TALLER: 'bg-blue-600',
     PANEL: 'bg-green-500',
     PRESENTATION: 'bg-orange-500',
+    PITCH: 'bg-red-500',
     NETWORKING: 'bg-pink-500',
     BREAK: 'bg-gray-500',
+    CEREMONY: 'bg-amber-500',
+    CONFERENCIA: 'bg-purple-500',
+    MESA_REDONDA: 'bg-green-600',
+    FORO: 'bg-teal-500',
+    SEMINARIO: 'bg-indigo-500',
+    CURSO: 'bg-cyan-500',
+    OTRO: 'bg-gray-500',
     OTHER: 'bg-gray-500',
   };
   return colors[type] || 'bg-gray-500';
@@ -34,11 +45,22 @@ export const getActivityTypeColor = (type: string) => {
 export const getTypeLabel = (type: string) => {
   const labels: Record<string, string> = {
     KEYNOTE: 'Conferencia',
-    WORKSHOP: 'Taller',
+    KEYNOTE_SPEECH: 'Discurso Principal',
+    CHARLA_MAGISTRAL: 'Charla Magistral',
+    WORKSHOP: 'Workshop',
+    TALLER: 'Taller',
     PANEL: 'Panel',
     PRESENTATION: 'Presentación',
+    PITCH: 'Pitch',
     NETWORKING: 'Networking',
     BREAK: 'Descanso',
+    CEREMONY: 'Ceremonia',
+    CONFERENCIA: 'Conferencia',
+    MESA_REDONDA: 'Mesa Redonda',
+    FORO: 'Foro',
+    SEMINARIO: 'Seminario',
+    CURSO: 'Curso',
+    OTRO: 'Otro',
     OTHER: 'Otro',
   };
   return labels[type] || type;

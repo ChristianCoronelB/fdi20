@@ -5092,12 +5092,23 @@ export default function FabricaDeIdeasApp() {
                                     </SelectTrigger>
                                     <SelectContent>
                                       <SelectItem value="KEYNOTE">Conferencia</SelectItem>
-                                      <SelectItem value="KEYNOTE_SPEECH">Charla Magistral</SelectItem>
-                                      <SelectItem value="WORKSHOP">Taller</SelectItem>
+                                      <SelectItem value="KEYNOTE_SPEECH">Discurso Principal</SelectItem>
+                                      <SelectItem value="CHARLA_MAGISTRAL">Charla Magistral</SelectItem>
+                                      <SelectItem value="WORKSHOP">Workshop</SelectItem>
+                                      <SelectItem value="TALLER">Taller</SelectItem>
                                       <SelectItem value="PANEL">Panel</SelectItem>
                                       <SelectItem value="PRESENTATION">Presentación</SelectItem>
+                                      <SelectItem value="PITCH">Pitch</SelectItem>
                                       <SelectItem value="NETWORKING">Networking</SelectItem>
                                       <SelectItem value="BREAK">Descanso</SelectItem>
+                                      <SelectItem value="CEREMONY">Ceremonia</SelectItem>
+                                      <SelectItem value="CONFERENCIA">Conferencia</SelectItem>
+                                      <SelectItem value="MESA_REDONDA">Mesa Redonda</SelectItem>
+                                      <SelectItem value="FORO">Foro</SelectItem>
+                                      <SelectItem value="SEMINARIO">Seminario</SelectItem>
+                                      <SelectItem value="CURSO">Curso</SelectItem>
+                                      <SelectItem value="OTRO">Otro</SelectItem>
+                                      <SelectItem value="OTHER">Other</SelectItem>
                                     </SelectContent>
                                   </Select>
                                 </div>
@@ -5312,12 +5323,23 @@ export default function FabricaDeIdeasApp() {
                                 </SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="KEYNOTE">Conferencia</SelectItem>
-                                  <SelectItem value="KEYNOTE_SPEECH">Charla Magistral</SelectItem>
-                                  <SelectItem value="WORKSHOP">Taller</SelectItem>
+                                  <SelectItem value="KEYNOTE_SPEECH">Discurso Principal</SelectItem>
+                                  <SelectItem value="CHARLA_MAGISTRAL">Charla Magistral</SelectItem>
+                                  <SelectItem value="WORKSHOP">Workshop</SelectItem>
+                                  <SelectItem value="TALLER">Taller</SelectItem>
                                   <SelectItem value="PANEL">Panel</SelectItem>
                                   <SelectItem value="PRESENTATION">Presentación</SelectItem>
+                                  <SelectItem value="PITCH">Pitch</SelectItem>
                                   <SelectItem value="NETWORKING">Networking</SelectItem>
                                   <SelectItem value="BREAK">Descanso</SelectItem>
+                                  <SelectItem value="CEREMONY">Ceremonia</SelectItem>
+                                  <SelectItem value="CONFERENCIA">Conferencia</SelectItem>
+                                  <SelectItem value="MESA_REDONDA">Mesa Redonda</SelectItem>
+                                  <SelectItem value="FORO">Foro</SelectItem>
+                                  <SelectItem value="SEMINARIO">Seminario</SelectItem>
+                                  <SelectItem value="CURSO">Curso</SelectItem>
+                                  <SelectItem value="OTRO">Otro</SelectItem>
+                                  <SelectItem value="OTHER">Other</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>

@@ -1,5 +1,24 @@
 # Historial de Versiones - Fábrica de Ideas
 
+## v2.2.2 - 2026-04-24
+
+### Corrección Definitiva
+- **Enum ActivityType Completo**: Agregados TODOS los tipos de actividad que puedan existir en la base de datos
+  - KEYNOTE, KEYNOTE_SPEECH, CHARLA_MAGISTRAL
+  - WORKSHOP, TALLER, PANEL, PRESENTATION, PITCH
+  - NETWORKING, BREAK, CEREMONY
+  - CONFERENCIA, MESA_REDONDA, FORO, SEMINARIO, CURSO
+  - OTRO, OTHER
+- **Prisma Studio**: Corregido error al leer tabla Activity con tipos existentes
+- **Selectores actualizados**: Todos los formularios tienen los tipos correctos
+
+### Instrucciones para Base de Datos Existente
+Si tienes una base de datos existente con tipos que no están en el enum:
+1. Opción A: Actualizar los datos existentes a tipos válidos
+2. Opción B: Empezar con base de datos limpia
+
+---
+
 ## v2.2.1 - 2026-04-24
 
 ### Correcciones Importantes

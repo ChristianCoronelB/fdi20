@@ -83,10 +83,16 @@ export function Agenda({ activities, onRegister, userRegistrations }: AgendaProp
             <SelectContent>
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="KEYNOTE">Conferencias</SelectItem>
-              <SelectItem value="WORKSHOP">Talleres</SelectItem>
+              <SelectItem value="CHARLA_MAGISTRAL">Charlas Magistrales</SelectItem>
+              <SelectItem value="WORKSHOP">Workshops</SelectItem>
+              <SelectItem value="TALLER">Talleres</SelectItem>
               <SelectItem value="PANEL">Paneles</SelectItem>
               <SelectItem value="PRESENTATION">Presentaciones</SelectItem>
+              <SelectItem value="PITCH">Pitches</SelectItem>
               <SelectItem value="NETWORKING">Networking</SelectItem>
+              <SelectItem value="CEREMONY">Ceremonias</SelectItem>
+              <SelectItem value="SEMINARIO">Seminarios</SelectItem>
+              <SelectItem value="CURSO">Cursos</SelectItem>
             </SelectContent>
           </Select>
         </div>
