@@ -1,20 +1,58 @@
 # Historial de Versiones - Fábrica de Ideas
 
+## v2.2.1 - 2026-04-24
+
+### Correcciones Importantes
+- **Enum ActivityType**: Corregido error de Prisma Studio al leer tabla Activity
+  - Agregados tipos faltantes: CHARLA_MAGISTRAL, PITCH, CEREMONY
+  - Selectores de tipo de actividad actualizados en el frontend
+- **API de Actividades**: Mejor manejo de errores y tipos dinámicos
+
+### Módulo de Evaluación
+- Sistema de asignación de proyectos a evaluadores activo
+- Formulario de evaluación con rúbrica de 6 criterios:
+  1. Innovación y Creatividad (20%)
+  2. Viabilidad del Negocio (15%)
+  3. Impacto Social/Ambiental (15%)
+  4. Pitch - Presentación y Comunicación (20%)
+  5. Potencial de Escalamiento (10%)
+  6. Entregable - Poster, PMV, Producto o Servicio (20%)
+- Búsqueda de proyectos en asignaciones
+- Puntaje total automático sobre 100 puntos
+
+---
+
+## v2.2.0 - 2026-04-23
+
+### Nuevas Funcionalidades
+- **Módulo de Usuarios Corregido**: Botón "Guardar Cambios" funcional
+- **Módulo de Actividades Corregido**: Guardado de información completo
+- **Módulo de Evaluación Activado**: Formularios visibles y funcionales
+- **Footer Global**: Implementado y configurable
+
+---
+
+## v2.1.5 - 2026-04-22
+
+### Nuevas Funcionalidades
+- **Módulo de Evaluación**: Sistema completo de evaluación con rúbrica de 6 criterios
+- **Módulo de Reportes**: Generación de estadísticas y reportes
+- **Dashboard**: Resumen de proyectos ganadores por categoría
+- **Footer Global**: Footer personalizable con configuración
+
+### Correcciones
+- Corregidos diálogos de evaluación (Evaluar, Nueva Asignación)
+- Corregido diálogo de cambio de contraseña en perfil de usuario
+- Corregida eliminación de actividades
+- Mejorada la búsqueda de proyectos en asignaciones
+
+---
+
 ## v2.1.4 - 2026-04-22
 
 ### Nuevas Funcionalidades
 - **Módulo de Evaluación**: Sistema completo de evaluación con rúbrica de 6 criterios
-  - Innovación y Creatividad (20%)
-  - Viabilidad del Negocio (15%)
-  - Impacto Social/Ambiental (15%)
-  - Presentación y Comunicación (20%)
-  - Potencial de Escalamiento (15%)
-  - Equipo y Ejecución (15%)
 - **Módulo de Reportes**: Generación de estadísticas y reportes
-  - Estadísticas generales del evento
-  - Reporte de proyectos por categoría
-  - Reporte de evaluaciones
-  - Top proyectos por evaluación
 - **Dashboard**: Resumen de proyectos ganadores por categoría
 - **Footer Global**: Footer personalizable con configuración
 

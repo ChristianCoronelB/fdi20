@@ -1,123 +1,50 @@
 Fábrica de Ideas - Plataforma de Gestión de Eventos
-Versión: v2.2.0-20260423
-Fecha: 23 de Abril de 2026
+Versión: v2.2.1-20260424
+Fecha: 24 de Abril de 2026
 Autor: Z.ai Code
 
 ===========================================
-NOVEDADES v2.2.0
+NOVEDADES v2.2.1
 ===========================================
 
-1. MÓDULO DE USUARIOS CORREGIDO
-   - Botón "Guardar Cambios" ahora guarda en la base de datos
-   - Filtro de búsqueda de usuarios funcional
-   - Edición de usuarios desde la lista de administración
-   - Actualización de roles y estados persiste correctamente
+1. CORRECCIÓN DEL ENUM ACTIVITYTYPE
+   - Agregados tipos de actividad faltantes: CHARLA_MAGISTRAL, PITCH, CEREMONY
+   - Corregido error de Prisma Studio al leer tabla Activity
+   - Mejor manejo de errores en API de actividades
+   - Selectores de tipo de actividad actualizados
 
-2. MÓDULO DE ACTIVIDADES CORREGIDO
-   - Botón "Grabar" guarda toda la información en la base de datos
-   - Todos los campos se guardan correctamente: título, descripción, tipo, sala, fechas, expositor, capacidad
-   - Edición de actividades persiste correctamente
-   - eventId dinámico (no hardcodeado)
+2. MÓDULO DE EVALUACIÓN ACTIVO
+   - Asignación de proyectos a evaluadores funcional
+   - Formulario de evaluación con rúbrica de 6 criterios:
+     * Innovación y Creatividad (20%)
+     * Viabilidad del Negocio (15%)
+     * Impacto Social/Ambiental (15%)
+     * Pitch - Presentación y Comunicación (20%)
+     * Potencial de Escalamiento (10%)
+     * Entregable - Poster, PMV, Producto o Servicio (20%)
+   - Búsqueda de proyectos en asignaciones
+   - Comentarios por criterio y general
+   - Puntaje total automático sobre 100 puntos
 
-3. MÓDULO DE EVALUACIÓN ACTIVADO
-   - Formulario de evaluación visible al hacer click en "Evaluar"
-   - Formulario de nueva asignación visible al hacer click en "Nueva Asignación"
-   - Búsqueda de proyectos en asignaciones funcional
-   - Compatible con roles: EVALUATOR, ADMIN, ORGANIZER
-
-4. FOOTER GLOBAL IMPLEMENTADO
-   - Footer visible desde la pantalla de login
-   - Footer configurable desde módulo de configuración
-   - Texto dinámico desde appConfig.footerText
-
-===========================================
-CARACTERÍSTICAS PRINCIPALES
-===========================================
-
-1. DASHBOARD
-- Estadísticas en tiempo real
-- Resumen de proyectos ganadores por categoría
-- Métricas de participación
-- Gráficos interactivos
-
-2. GESTIÓN DE USUARIOS
-- CRUD completo de usuarios
-- Roles: Admin, Organizador, Moderador, Evaluador, Participante
-- Perfil de usuario con cambio de contraseña
-- Sistema de puntos y niveles
-- Búsqueda y filtros funcionales
-
-3. GESTIÓN DE EVENTOS
-- Crear y administrar eventos
-- Configuración de fechas, ubicación
-- Activación/desactivación de módulos
-
-4. GESTIÓN DE ACTIVIDADES
-- Agenda de actividades
-- Asignación de salas y expositores
-- Control de capacidad
-- Estados: Programado, En Progreso, Completado, Cancelado
-- Tipos: Conferencia, Charla Magistral, Taller, Panel, Presentación, Networking, Descanso
-
-5. GESTIÓN DE PROYECTOS
-- Registro de proyectos participantes
-- Categorías y áreas de participación
-- Estados: Borrador, Enviado, Aprobado, Rechazado, Finalista, Ganador
-- Información del equipo y líder
-
-6. MÓDULO DE EVALUACIÓN
-- Rúbrica de evaluación con 6 criterios (100 pts)
-- Asignación de proyectos a evaluadores
-- Búsqueda de proyectos
-- Comentarios por criterio y general
-- Puntaje total automático
-
-7. MÓDULO DE REPORTES
-- Estadísticas generales del evento
-- Reporte de proyectos por categoría
-- Reporte de evaluaciones
-- Top proyectos por evaluación
-- Exportación de datos
-
-8. SISTEMA DE VOTACIÓN
-- Configuración de votación por evento
-- Votos por like, estrellas o puntos
-- Límite de votos por usuario
-- Resultados en tiempo real
-
-9. ESCÁNER QR
-- Generación de códigos QR
-- Escaneo para registro de asistencia
-- Tipos: Sala, Actividad, Proyecto, Usuario, Evento
-
-10. SISTEMA DE LOGROS
-- Gamificación con puntos
-- Logros desbloqueables
-- Niveles de usuario
-
-11. CERTIFICADOS
-- Generación automática de certificados
-- Plantillas personalizables
-- Verificación por código único
-- Descarga en PDF
-
-12. CONFIGURACIÓN GLOBAL
-- Zona horaria configurable
-- Footer personalizable
-- Configuración de notificaciones
-- Tema claro/oscuro
+3. ESTABILIDAD GENERAL
+   - Correcciones en el manejo de tipos de actividad
+   - Mejoras en la gestión de errores de API
 
 ===========================================
-REQUISITOS DEL SISTEMA
+INSTALACIÓN RÁPIDA
 ===========================================
 
-- Node.js 18+ o Bun runtime
-- SQLite (incluido)
-- 512MB RAM mínimo
-- 100MB espacio en disco
+1. Descomprime este archivo
+2. Abre una terminal en la carpeta
+3. Ejecuta: bun install
+4. Ejecuta: bun run db:generate
+5. Ejecuta: bun run db:push
+6. Ejecuta: bun run db:seed
+7. Ejecuta: bun run dev
+8. Abre: http://localhost:3000
 
 ===========================================
-CREDENCIALES DE PRUEBA
+CREDENCIALES POR DEFECTO
 ===========================================
 
 Administrador:
