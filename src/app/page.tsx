@@ -3786,17 +3786,6 @@ export default function FabricaDeIdeasApp() {
                   </div>
                 </CardContent>
               </Card>
-              
-              {/* Demo credentials */}
-              <Alert className="mt-4 bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800">
-                <Sparkles className="h-4 w-4" />
-                <AlertTitle>Credenciales de prueba</AlertTitle>
-                <AlertDescription className="text-sm">
-                  Email: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">admin@fabricadeideas.com</code>
-                  <br />
-                  Password: <code className="bg-blue-100 dark:bg-blue-900 px-1 rounded">admin123</code>
-                </AlertDescription>
-              </Alert>
             </motion.div>
           </div>
         </main>

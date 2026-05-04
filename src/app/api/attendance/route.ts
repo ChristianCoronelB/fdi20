@@ -83,7 +83,7 @@ export async function GET(request: NextRequest) {
     }
 
     const countResult = await db.$queryRawUnsafe(countQuery, ...countParams);
-    const total = (countResult as any[])[0]?.count || 0;
+    const total = Number((countResult as any[])[0]?.count || 0);
 
     // Format the results
     const formattedAttendances = (attendances as any[]).map((a: any) => ({
