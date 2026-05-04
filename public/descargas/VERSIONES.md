@@ -1,5 +1,41 @@
 # Historial de Versiones - Fábrica de Ideas
 
+## v2.8.1 - 2025-05-04
+
+### Correcciones de Errores
+
+#### Error de Nodemailer
+- **Solucionado**: Error "Module not found: Can't resolve 'nodemailer'"
+- Se instaló correctamente el paquete `nodemailer` para el sistema de envío de emails
+
+#### Error de Serialización BigInt
+- **Solucionado**: Error "JSON.stringify cannot serialize BigInt" en API de asistencia
+- Corregido en `src/app/api/attendance/route.ts` convirtiendo valores COUNT a Number
+
+#### Mejoras de Seguridad
+- **Eliminadas credenciales de prueba** de la pantalla de login
+- Removido el alert que mostraba usuario/contraseña de demostración
+
+### Instrucciones de Actualización
+
+```bash
+# 1. Detener el servicio
+pm2 stop fabrica-de-ideas
+
+# 2. Respaldar base de datos
+cp prisma/db/custom.db prisma/db/custom.db.backup
+
+# 3. Actualizar archivos (descomprimir ZIP)
+
+# 4. Instalar dependencias (incluye nodemailer)
+bun install
+
+# 5. Reiniciar el servicio
+pm2 restart fabrica-de-ideas
+```
+
+---
+
 ## v2.8.0 - 2025-05-04
 
 ### Términos y Condiciones - Ley de Protección de Datos Ecuador
