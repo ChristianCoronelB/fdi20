@@ -10788,242 +10788,6 @@ export default function FabricaDeIdeasApp() {
                     </DialogFooter>
                   </DialogContent>
                 </Dialog>
-
-                {/* New Assignment Dialog */}
-                <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
-                  <DialogContent>
-                    <DialogHeader>
-                      <DialogTitle>Nueva Asignación</DialogTitle>
-                      <DialogDescription>Asigna un proyecto a un evaluador</DialogDescription>
-                    </DialogHeader>
-                    <div className="space-y-4 py-4">
-                      <div className="space-y-2">
-                        <Label>Evaluador</Label>
-                        <Select
-                          value={newAssignmentForm.evaluatorId}
-                          onValueChange={(value) => setNewAssignmentForm(prev => ({ ...prev, evaluatorId: value }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar evaluador" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {usersList.filter(u => u.role === 'EVALUATOR' || u.role === 'ADMIN' || u.role === 'ORGANIZER').map((evaluator) => (
-                              <SelectItem key={evaluator.id} value={evaluator.id}>
-                                {evaluator.name} ({getRoleLabel(evaluator.role)})
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label>Proyecto</Label>
-                        <Input
-                          placeholder="Buscar proyecto..."
-                          value={assignmentSearchQuery}
-                          onChange={(e) => setAssignmentSearchQuery(e.target.value)}
-                          className="mb-2"
-                        />
-                        <Select
-                          value={newAssignmentForm.projectId}
-                          onValueChange={(value) => setNewAssignmentForm(prev => ({ ...prev, projectId: value }))}
-                        >
-                          <SelectTrigger>
-                            <SelectValue placeholder="Seleccionar proyecto" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {getFilteredProjectsForAssignment().slice(0, 20).map((project) => (
-                              <SelectItem key={project.id} value={project.id}>
-                                {project.name} - {project.team}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-                    <DialogFooter>
-                      <Button variant="outline" onClick={() => {
-                        setAssignmentDialogOpen(false);
-                        setNewAssignmentForm({ evaluatorId: '', projectId: '' });
-                        setAssignmentSearchQuery('');
-                      }}>
-                        Cancelar
-                      </Button>
-                      <Button
-                        className="bg-gradient-to-r from-emerald-500 to-teal-600"
-                        onClick={handleCreateAssignment}
-                        disabled={savingAssignment}
-                      >
-                        {savingAssignment ? 'Creando...' : 'Crear Asignación'}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
-
-                {/* Evaluation Dialog */}
-                <Dialog open={evaluationDialogOpen} onOpenChange={setEvaluationDialogOpen}>
-                  <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
-                    <DialogHeader>
-                      <DialogTitle className="flex items-center gap-2 text-lg md:text-xl">
-                        <Star className="w-5 h-5 text-amber-500" />
-                        Evaluación de Proyecto
-                      </DialogTitle>
-                      <DialogDescription>
-                        {selectedProjectForEvaluation?.name} - {selectedProjectForEvaluation?.team}
-                      </DialogDescription>
-                    </DialogHeader>
-                    
-                    <div className="space-y-6 py-4">
-                      {/* Project Description */}
-                      {selectedProjectForEvaluation?.description && (
-                        <Alert>
-                          <Lightbulb className="h-4 w-4" />
-                          <AlertTitle>Descripción del Proyecto</AlertTitle>
-                          <AlertDescription>{selectedProjectForEvaluation.description}</AlertDescription>
-                        </Alert>
-                      )}
-
-                      {/* Evaluation Criteria */}
-                      {evaluationCriteria.map((criterion) => (
-                        <div key={criterion.key} className="space-y-3">
-                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                            <div>
-                              <Label className="text-base font-semibold">{criterion.label}</Label>
-                              <p className="text-xs text-muted-foreground">{criterion.description}</p>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <div className="flex items-center gap-1">
-                                {[...Array(10)].map((_, i) => (
-                                  <button
-                                    key={i}
-                                    type="button"
-                                    onClick={() => setEvaluationForm(prev => ({
-                                      ...prev,
-                                      [criterion.key]: i + 1
-                                    }))}
-                                    className="p-0.5 transition-transform hover:scale-110"
-                                  >
-                                    <div 
-                                      className={cn(
-                                        "w-5 h-5 md:w-6 md:h-6 rounded-sm transition-colors",
-                                        i < evaluationForm[criterion.key as keyof typeof evaluationForm] as number
-                                          ? "bg-amber-500"
-                                          : "bg-gray-200 dark:bg-gray-700"
-                                      )}
-                                    />
-                                  </button>
-                                ))}
-                              </div>
-                              <span className="text-lg font-bold w-8 text-center">
-                                {evaluationForm[criterion.key as keyof typeof evaluationForm] || 0}
-                              </span>
-                            </div>
-                          </div>
-                          <Textarea
-                            placeholder={`Comentario sobre ${criterion.label.toLowerCase()} (opcional)`}
-                            value={evaluationForm[`${criterion.key}Comment` as keyof typeof evaluationForm] as string}
-                            onChange={(e) => setEvaluationForm(prev => ({
-                              ...prev,
-                              [`${criterion.key}Comment`]: e.target.value
-                            }))}
-                            rows={2}
-                            className="text-sm"
-                          />
-                        </div>
-                      ))}
-
-                      {/* General Comment */}
-                      <div className="space-y-2 pt-4 border-t">
-                        <Label className="text-base font-semibold">Comentario General</Label>
-                        <Textarea
-                          placeholder="Agrega un comentario general sobre el proyecto..."
-                          value={evaluationForm.generalComment}
-                          onChange={(e) => setEvaluationForm(prev => ({
-                            ...prev,
-                            generalComment: e.target.value
-                          }))}
-                          rows={3}
-                        />
-                      </div>
-
-                      {/* Current Score Summary */}
-                      {(() => {
-                        const scores = [
-                          evaluationForm.innovation,
-                          evaluationForm.viability,
-                          evaluationForm.impact,
-                          evaluationForm.presentation,
-                          evaluationForm.scalability,
-                          evaluationForm.execution
-                        ].filter(s => s > 0);
-                        const avg = scores.length > 0 
-                          ? scores.reduce((a, b) => a + b, 0) / scores.length 
-                          : 0;
-                        
-                        return (
-                          <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-4">
-                            <div className="flex items-center justify-between">
-                              <span className="font-medium">Puntaje Promedio</span>
-                              <div className="flex items-center gap-2">
-                                <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
-                                <span className="text-2xl font-bold text-amber-600">
-                                  {avg.toFixed(1)}/10
-                                </span>
-                              </div>
-                            </div>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              Basado en {scores.length} de 6 criterios evaluados
-                            </p>
-                          </div>
-                        );
-                      })()}
-                    </div>
-
-                    <DialogFooter className="flex-col sm:flex-row gap-2">
-                      <Button 
-                        variant="outline" 
-                        onClick={() => setEvaluationDialogOpen(false)}
-                        className="w-full sm:w-auto"
-                      >
-                        Cancelar
-                      </Button>
-                      <Button 
-                        variant="secondary"
-                        onClick={() => handleSaveEvaluation(false)}
-                        disabled={savingEvaluation}
-                        className="w-full sm:w-auto"
-                      >
-                        {savingEvaluation ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                            Guardando...
-                          </>
-                        ) : (
-                          <>
-                            <FileText className="w-4 h-4 mr-2" />
-                            Guardar Borrador
-                          </>
-                        )}
-                      </Button>
-                      <Button 
-                        className="w-full sm:w-auto bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
-                        onClick={() => handleSaveEvaluation(true)}
-                        disabled={savingEvaluation}
-                      >
-                        {savingEvaluation ? (
-                          <>
-                            <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                            Enviando...
-                          </>
-                        ) : (
-                          <>
-                            <Send className="w-4 h-4 mr-2" />
-                            Enviar Evaluación
-                          </>
-                        )}
-                      </Button>
-                    </DialogFooter>
-                  </DialogContent>
-                </Dialog>
               </motion.div>
             )}
           </AnimatePresence>
@@ -11168,6 +10932,243 @@ export default function FabricaDeIdeasApp() {
                 <>
                   <Check className="w-4 h-4 mr-2" />
                   Confirmar Voto
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Global Evaluation Dialogs - Outside AnimatePresence for proper rendering */}
+      {/* New Assignment Dialog */}
+      <Dialog open={assignmentDialogOpen} onOpenChange={setAssignmentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Nueva Asignación</DialogTitle>
+            <DialogDescription>Asigna un proyecto a un evaluador</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Evaluador</Label>
+              <Select
+                value={newAssignmentForm.evaluatorId}
+                onValueChange={(value) => setNewAssignmentForm(prev => ({ ...prev, evaluatorId: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar evaluador" />
+                </SelectTrigger>
+                <SelectContent>
+                  {usersList.filter(u => u.role === 'EVALUATOR' || u.role === 'ADMIN' || u.role === 'ORGANIZER').map((evaluator) => (
+                    <SelectItem key={evaluator.id} value={evaluator.id}>
+                      {evaluator.name} ({getRoleLabel(evaluator.role)})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Proyecto</Label>
+              <Input
+                placeholder="Buscar proyecto..."
+                value={assignmentSearchQuery}
+                onChange={(e) => setAssignmentSearchQuery(e.target.value)}
+                className="mb-2"
+              />
+              <Select
+                value={newAssignmentForm.projectId}
+                onValueChange={(value) => setNewAssignmentForm(prev => ({ ...prev, projectId: value }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Seleccionar proyecto" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getFilteredProjectsForAssignment().slice(0, 20).map((project) => (
+                    <SelectItem key={project.id} value={project.id}>
+                      {project.name} - {project.team}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => {
+              setAssignmentDialogOpen(false);
+              setNewAssignmentForm({ evaluatorId: '', projectId: '' });
+              setAssignmentSearchQuery('');
+            }}>
+              Cancelar
+            </Button>
+            <Button
+              className="bg-gradient-to-r from-emerald-500 to-teal-600"
+              onClick={handleCreateAssignment}
+              disabled={savingAssignment}
+            >
+              {savingAssignment ? 'Creando...' : 'Crear Asignación'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Evaluation Dialog */}
+      <Dialog open={evaluationDialogOpen} onOpenChange={setEvaluationDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-lg md:text-xl">
+              <Star className="w-5 h-5 text-amber-500" />
+              Evaluación de Proyecto
+            </DialogTitle>
+            <DialogDescription>
+              {selectedProjectForEvaluation?.name} - {selectedProjectForEvaluation?.team}
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-6 py-4">
+            {/* Project Description */}
+            {selectedProjectForEvaluation?.description && (
+              <Alert>
+                <Lightbulb className="h-4 w-4" />
+                <AlertTitle>Descripción del Proyecto</AlertTitle>
+                <AlertDescription>{selectedProjectForEvaluation.description}</AlertDescription>
+              </Alert>
+            )}
+
+            {/* Evaluation Criteria */}
+            {evaluationCriteria.map((criterion) => (
+              <div key={criterion.key} className="space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                  <div>
+                    <Label className="text-base font-semibold">{criterion.label}</Label>
+                    <p className="text-xs text-muted-foreground">{criterion.description}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
+                      {[...Array(10)].map((_, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setEvaluationForm(prev => ({
+                            ...prev,
+                            [criterion.key]: i + 1
+                          }))}
+                          className="p-0.5 transition-transform hover:scale-110"
+                        >
+                          <div 
+                            className={cn(
+                              "w-5 h-5 md:w-6 md:h-6 rounded-sm transition-colors",
+                              i < evaluationForm[criterion.key as keyof typeof evaluationForm] as number
+                                ? "bg-amber-500"
+                                : "bg-gray-200 dark:bg-gray-700"
+                            )}
+                          />
+                        </button>
+                      ))}
+                    </div>
+                    <span className="text-lg font-bold w-8 text-center">
+                      {evaluationForm[criterion.key as keyof typeof evaluationForm] || 0}
+                    </span>
+                  </div>
+                </div>
+                <Textarea
+                  placeholder={`Comentario sobre ${criterion.label.toLowerCase()} (opcional)`}
+                  value={evaluationForm[`${criterion.key}Comment` as keyof typeof evaluationForm] as string}
+                  onChange={(e) => setEvaluationForm(prev => ({
+                    ...prev,
+                    [`${criterion.key}Comment`]: e.target.value
+                  }))}
+                  rows={2}
+                  className="text-sm"
+                />
+              </div>
+            ))}
+
+            {/* General Comment */}
+            <div className="space-y-2 pt-4 border-t">
+              <Label className="text-base font-semibold">Comentario General</Label>
+              <Textarea
+                placeholder="Agrega un comentario general sobre el proyecto..."
+                value={evaluationForm.generalComment}
+                onChange={(e) => setEvaluationForm(prev => ({
+                  ...prev,
+                  generalComment: e.target.value
+                }))}
+                rows={3}
+              />
+            </div>
+
+            {/* Current Score Summary */}
+            {(() => {
+              const scores = [
+                evaluationForm.innovation,
+                evaluationForm.viability,
+                evaluationForm.impact,
+                evaluationForm.presentation,
+                evaluationForm.scalability,
+                evaluationForm.execution
+              ].filter(s => s > 0);
+              const avg = scores.length > 0 
+                ? scores.reduce((a, b) => a + b, 0) / scores.length 
+                : 0;
+              
+              return (
+                <div className="bg-amber-50 dark:bg-amber-950/30 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium">Puntaje Promedio</span>
+                    <div className="flex items-center gap-2">
+                      <Star className="w-5 h-5 text-amber-500 fill-amber-500" />
+                      <span className="text-2xl font-bold text-amber-600">
+                        {avg.toFixed(1)}/10
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Basado en {scores.length} de 6 criterios evaluados
+                  </p>
+                </div>
+              );
+            })()}
+          </div>
+
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setEvaluationDialogOpen(false)}
+              className="w-full sm:w-auto"
+            >
+              Cancelar
+            </Button>
+            <Button 
+              variant="secondary"
+              onClick={() => handleSaveEvaluation(false)}
+              disabled={savingEvaluation}
+              className="w-full sm:w-auto"
+            >
+              {savingEvaluation ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Guardando...
+                </>
+              ) : (
+                <>
+                  <FileText className="w-4 h-4 mr-2" />
+                  Guardar Borrador
+                </>
+              )}
+            </Button>
+            <Button 
+              className="w-full sm:w-auto bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700"
+              onClick={() => handleSaveEvaluation(true)}
+              disabled={savingEvaluation}
+            >
+              {savingEvaluation ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  Enviando...
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4 mr-2" />
+                  Enviar Evaluación
                 </>
               )}
             </Button>
