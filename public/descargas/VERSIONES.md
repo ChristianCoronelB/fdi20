@@ -1,5 +1,24 @@
 # Historial de Versiones - Fábrica de Ideas
 
+## v2.8.2 - 2025-05-04
+
+### Corrección de Diálogos de Evaluación
+
+#### Problema
+Los diálogos del módulo de evaluación de proyectos no se mostraban correctamente. Estaban ubicados dentro del bloque `AnimatePresence` que se renderiza condicionalmente.
+
+#### Solución
+- **Movidos los diálogos de evaluación y asignación** fuera del bloque `AnimatePresence`
+- Ahora los diálogos están en el scope global, accesibles desde cualquier vista
+- Diálogos corregidos:
+  - **Nueva Asignación** - Asignar proyectos a evaluadores
+  - **Evaluación de Proyecto** - Calificar con los 6 criterios
+
+#### Ubicación del Código
+Los diálogos ahora están después del diálogo de votación global (línea 10942+) en `src/app/page.tsx`
+
+---
+
 ## v2.8.1 - 2025-05-04
 
 ### Correcciones de Errores
