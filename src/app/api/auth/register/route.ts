@@ -4,7 +4,7 @@ import { register, setSession } from '@/lib/auth';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { email, password, name, role } = body;
+    const { email, password, name, role, acceptedTerms } = body;
     
     if (!email || !password || !name) {
       return NextResponse.json(
@@ -20,12 +20,21 @@ export async function POST(request: NextRequest) {
       );
     }
     
+    // Validar aceptación de términos y condiciones
+    if (!acceptedTerms) {
+      return NextResponse.json(
+        { success: false, error: 'Debes aceptar los términos y condiciones para registrarte' },
+        { status: 400 }
+      );
+    }
+    
     try {
       const result = await register({
         email,
         password,
         name,
         role,
+        acceptedTerms: true, // Pasar la aceptación de términos
       });
       
       await setSession(result.token);

@@ -106,6 +106,7 @@ export async function register(data: {
   password: string;
   name: string;
   role?: UserRole;
+  acceptedTerms?: boolean;
 }): Promise<{ user: User; token: string }> {
   const existingUser = await db.user.findUnique({
     where: { email: data.email },
@@ -123,6 +124,8 @@ export async function register(data: {
       password: hashedPassword,
       name: data.name,
       role: data.role || 'PARTICIPANT',
+      acceptedTerms: data.acceptedTerms || false,
+      acceptedTermsAt: data.acceptedTerms ? new Date() : null,
     },
   });
   

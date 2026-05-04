@@ -1,21 +1,88 @@
 # Historial de Versiones - Fábrica de Ideas
 
-## v2.2.2 - 2026-04-24
+## v2.8.0 - 2025-05-04
 
-### Corrección Definitiva
-- **Enum ActivityType Completo**: Agregados TODOS los tipos de actividad que puedan existir en la base de datos
-  - KEYNOTE, KEYNOTE_SPEECH, CHARLA_MAGISTRAL
-  - WORKSHOP, TALLER, PANEL, PRESENTATION, PITCH
-  - NETWORKING, BREAK, CEREMONY
-  - CONFERENCIA, MESA_REDONDA, FORO, SEMINARIO, CURSO
-  - OTRO, OTHER
-- **Prisma Studio**: Corregido error al leer tabla Activity con tipos existentes
-- **Selectores actualizados**: Todos los formularios tienen los tipos correctos
+### Términos y Condiciones - Ley de Protección de Datos Ecuador
 
-### Instrucciones para Base de Datos Existente
-Si tienes una base de datos existente con tipos que no están en el enum:
-1. Opción A: Actualizar los datos existentes a tipos válidos
-2. Opción B: Empezar con base de datos limpia
+#### Nuevas Funcionalidades
+- **Checkbox de términos y condiciones** obligatorio en el registro
+- **Modal completo** con términos basados en la LOPDP (Ley Orgánica de Protección de Datos Personales del Ecuador)
+- **Derechos ARCO** documentados para los usuarios
+- **Campo acceptedTerms** guardado en la base de datos
+
+### Recuperación de Contraseña por Email
+
+#### Sistema Completo
+- **Enlace "¿Olvidaste tu contraseña?"** en el login
+- **Envío de emails** con token de recuperación (1 hora de validez)
+- **Diálogo de restablecimiento** con validación de contraseñas
+- **Email de confirmación** al cambiar contraseña
+
+#### Configuración de Email
+Variables en `.env`:
+```
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_USER=tu-email@gmail.com
+EMAIL_PASS=contraseña-de-aplicación
+NEXT_PUBLIC_APP_URL=https://tu-dominio.com
+```
+
+#### APIs Nuevas
+- `POST /api/auth/forgot-password` - Solicitar recuperación
+- `GET /api/auth/reset-password` - Validar token
+- `POST /api/auth/reset-password` - Restablecer contraseña
+
+---
+
+## v2.7.9 - 2025-04-30
+
+### Selector de Puntos Dinámico por Criterio
+
+#### Cambio Principal en el Sistema de Evaluación
+- Cada criterio ahora se califica de 0 hasta su **peso máximo específico**
+- **No más ponderación**: El puntaje total es la suma directa de todos los puntos
+
+#### Escalas de Puntuación por Criterio:
+- **Innovación y Creatividad**: 0 a 20 puntos
+- **Viabilidad del Negocio**: 0 a 15 puntos
+- **Impacto Social/Ambiental**: 0 a 15 puntos
+- **Pitch (Presentación y Comunicación)**: 0 a 20 puntos
+- **Potencial de Escalamiento**: 0 a 10 puntos
+- **Entregable (Poster, PMV, Producto o Servicio)**: 0 a 20 puntos
+
+#### Mejoras en la Interfaz:
+- Selector visual de puntos con botones individuales para cada valor
+- Barra de progreso visual que muestra el porcentaje alcanzado en cada criterio
+- Indicación clara del máximo de puntos por criterio (ej: "Máx. 20 pts")
+- Diseño responsivo con grid de botones adaptables
+
+---
+
+## v2.7.8 - 2025-04-29
+
+### Módulo de Evaluación - Actualización Completa
+
+#### Criterios de Evaluación con Pesos Correctos
+- Innovación y Creatividad: 20% (máx. 20 pts)
+- Viabilidad del Negocio: 15% (máx. 15 pts)
+- Impacto Social/Ambiental: 15% (máx. 15 pts)
+- Pitch - Presentación y Comunicación: 20% (máx. 20 pts)
+- Potencial de Escalamiento: 10% (máx. 10 pts)
+- Entregable (Poster, PMV, Producto o Servicio): 20% (máx. 20 pts)
+
+#### Control de Evaluaciones
+- Evaluaciones enviadas (SUBMITTED) no pueden ser modificadas por el evaluador
+- Solo el administrador puede eliminar evaluaciones enviadas
+- Múltiples evaluadores pueden evaluar el mismo proyecto
+
+---
+
+## v2.7.7 - 2025-04-29
+
+### Corrección Crítica - API de Asignaciones
+- **Error `assignedBy` missing**: Solucionado error PrismaClientValidationError al crear asignaciones
+- **Campo session.userId corregido**: La interfaz JWTPayload usa `userId`, no `id`
 
 ---
 

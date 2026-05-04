@@ -34,6 +34,8 @@ model User {
   country       String?
   language      String   @default("es")
   isActive      Boolean  @default(true)
+  acceptedTerms Boolean  @default(false)  // Aceptación de términos y condiciones
+  acceptedTermsAt DateTime?              // Fecha de aceptación de términos
   lastLogin     DateTime?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
@@ -50,6 +52,7 @@ model User {
   sessions      Session[]
   registrations ActivityRegistration[]
   evaluatorAssignments EvaluatorAssignment[]
+  passwordResets PasswordReset[]
 
   @@map("users")
 }
@@ -653,4 +656,20 @@ model EvaluatorAssignment {
   
   @@unique([evaluatorId, projectId])
   @@map("evaluator_assignments")
+}
+
+// ==================== PASSWORD RESET ====================
+
+model PasswordReset {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique   // Token único para restablecer contraseña
+  expiresAt DateTime            // Fecha de expiración del token (1 hora)
+  usedAt    DateTime?           // Fecha en que se usó el token
+  createdAt DateTime @default(now())
+  
+  // Relations
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@map("password_resets")
 }

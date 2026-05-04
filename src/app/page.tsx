@@ -20,6 +20,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -404,6 +405,23 @@ export default function FabricaDeIdeasApp() {
   const [registerEmail, setRegisterEmail] = useState('');
   const [registerPassword, setRegisterPassword] = useState('');
   const [showLogin, setShowLogin] = useState(true);
+  
+  // Términos y condiciones
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [showTermsDialog, setShowTermsDialog] = useState(false);
+  
+  // Recuperación de contraseña
+  const [showForgotPasswordDialog, setShowForgotPasswordDialog] = useState(false);
+  const [forgotPasswordEmail, setForgotPasswordEmail] = useState('');
+  const [sendingResetEmail, setSendingResetEmail] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
+  
+  // Restablecer contraseña
+  const [showResetPasswordDialog, setShowResetPasswordDialog] = useState(false);
+  const [resetToken, setResetToken] = useState('');
+  const [newResetPassword, setNewResetPassword] = useState('');
+  const [confirmResetPassword, setConfirmResetPassword] = useState('');
+  const [resettingPassword, setResettingPassword] = useState(false);
 
   // User profile states
   const [showProfileDialog, setShowProfileDialog] = useState(false);
@@ -785,6 +803,13 @@ export default function FabricaDeIdeasApp() {
 
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Validar aceptación de términos
+    if (!acceptedTerms) {
+      toast.error('Debes aceptar los términos y condiciones para registrarte');
+      return;
+    }
+    
     setLoading(true);
     try {
       const res = await fetch('/api/auth/register', {
@@ -793,7 +818,8 @@ export default function FabricaDeIdeasApp() {
         body: JSON.stringify({ 
           email: registerEmail, 
           password: registerPassword, 
-          name: registerName 
+          name: registerName,
+          acceptedTerms: true
         }),
       });
       const data = await res.json();
@@ -816,6 +842,89 @@ export default function FabricaDeIdeasApp() {
     setIsLoggedIn(false);
     toast.success('Sesión cerrada');
   };
+
+  // Función para solicitar recuperación de contraseña
+  const handleForgotPassword = async () => {
+    if (!forgotPasswordEmail.trim()) {
+      toast.error('Por favor, ingresa tu correo electrónico');
+      return;
+    }
+    
+    setSendingResetEmail(true);
+    try {
+      const res = await fetch('/api/auth/forgot-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: forgotPasswordEmail }),
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setResetEmailSent(true);
+        toast.success(data.message || 'Si el correo está registrado, recibirás un email con instrucciones');
+      } else {
+        toast.error(data.error || 'Error al procesar la solicitud');
+      }
+    } catch {
+      toast.error('Error de conexión');
+    }
+    setSendingResetEmail(false);
+  };
+
+  // Función para restablecer contraseña
+  const handleResetPassword = async () => {
+    if (!newResetPassword || newResetPassword.length < 6) {
+      toast.error('La contraseña debe tener al menos 6 caracteres');
+      return;
+    }
+    if (newResetPassword !== confirmResetPassword) {
+      toast.error('Las contraseñas no coinciden');
+      return;
+    }
+    
+    setResettingPassword(true);
+    try {
+      const res = await fetch('/api/auth/reset-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          token: resetToken, 
+          password: newResetPassword,
+          confirmPassword: confirmResetPassword
+        }),
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        toast.success(data.message || 'Contraseña actualizada exitosamente');
+        setShowResetPasswordDialog(false);
+        setResetToken('');
+        setNewResetPassword('');
+        setConfirmResetPassword('');
+        setShowLogin(true);
+      } else {
+        toast.error(data.error || 'Error al restablecer la contraseña');
+      }
+    } catch {
+      toast.error('Error de conexión');
+    }
+    setResettingPassword(false);
+  };
+
+  // Verificar si hay token de reset en URL al cargar
+  useEffect(() => {
+    const checkResetToken = () => {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get('token');
+      if (token) {
+        setResetToken(token);
+        setShowResetPasswordDialog(true);
+        // Limpiar URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    };
+    checkResetToken();
+  }, []);
 
   // Create activity function
   const handleCreateActivity = async () => {
@@ -3561,7 +3670,21 @@ export default function FabricaDeIdeasApp() {
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label htmlFor="password">Contraseña</Label>
+                          <div className="flex items-center justify-between">
+                            <Label htmlFor="password">Contraseña</Label>
+                            <Button 
+                              type="button" 
+                              variant="link" 
+                              className="p-0 h-auto text-xs text-emerald-600 hover:text-emerald-700"
+                              onClick={() => {
+                                setForgotPasswordEmail(loginEmail);
+                                setShowForgotPasswordDialog(true);
+                                setResetEmailSent(false);
+                              }}
+                            >
+                              ¿Olvidaste tu contraseña?
+                            </Button>
+                          </div>
                           <Input
                             id="password"
                             type="password"
@@ -3612,6 +3735,28 @@ export default function FabricaDeIdeasApp() {
                             required
                           />
                         </div>
+                        
+                        {/* Checkbox de términos y condiciones */}
+                        <div className="flex items-start gap-2 py-2">
+                          <Checkbox
+                            id="terms"
+                            checked={acceptedTerms}
+                            onCheckedChange={(checked) => setAcceptedTerms(checked as boolean)}
+                          />
+                          <Label htmlFor="terms" className="text-sm font-normal leading-tight">
+                            Acepto los{' '}
+                            <Button 
+                              type="button"
+                              variant="link" 
+                              className="p-0 h-auto text-emerald-600 hover:text-emerald-700"
+                              onClick={() => setShowTermsDialog(true)}
+                            >
+                              términos y condiciones
+                            </Button>
+                            {' '}y la política de protección de datos personales.
+                          </Label>
+                        </div>
+                        
                         <Button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700" disabled={loading}>
                           {loading ? 'Creando...' : 'Crear Cuenta'}
                         </Button>
@@ -3655,6 +3800,243 @@ export default function FabricaDeIdeasApp() {
             </motion.div>
           </div>
         </main>
+
+        {/* Diálogo de Términos y Condiciones */}
+        <Dialog open={showTermsDialog} onOpenChange={setShowTermsDialog}>
+          <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden">
+            <DialogHeader>
+              <DialogTitle>Términos y Condiciones</DialogTitle>
+              <DialogDescription>
+                Política de Protección de Datos Personales - Ley Orgánica de Protección de Datos Personales del Ecuador
+              </DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="h-[60vh] pr-4">
+              <div className="space-y-4 text-sm">
+                <h3 className="text-lg font-semibold text-emerald-700">TÉRMINOS Y CONDICIONES DE USO</h3>
+                <p><strong>Fecha de vigencia:</strong> {new Date().toLocaleDateString('es-EC')}</p>
+                
+                <h4 className="font-semibold mt-4">1. ACEPTACIÓN DE LOS TÉRMINOS</h4>
+                <p>Al registrarse y utilizar la plataforma "Fábrica de Ideas", usted acepta estar sujeto a estos términos y condiciones. Si no está de acuerdo con alguna parte de estos términos, no deberá utilizar la plataforma.</p>
+                
+                <h4 className="font-semibold mt-4">2. PROTECCIÓN DE DATOS PERSONALES</h4>
+                <p>En cumplimiento de la <strong>Ley Orgánica de Protección de Datos Personales (LOPDP)</strong> del Ecuador, publicada en el Registro Oficial Suplemento 341 del 26 de mayo de 2021, le informamos:</p>
+                <ul className="list-disc pl-5 space-y-2">
+                  <li><strong>Responsable del tratamiento:</strong> Fábrica de Ideas actúa como responsable del tratamiento de sus datos personales.</li>
+                  <li><strong>Finalidad:</strong> Sus datos personales serán utilizados para: gestión de participación en eventos, registro de asistencia, emisión de certificados, sistema de votaciones, comunicaciones relacionadas con el evento, y generación de estadísticas.</li>
+                  <li><strong>Base legal:</strong> El tratamiento de sus datos se fundamenta en el consentimiento expreso que usted otorga al aceptar estos términos.</li>
+                  <li><strong>Transferencia internacional:</strong> Sus datos no serán transferidos a terceros países sin su consentimiento adicional.</li>
+                </ul>
+                
+                <h4 className="font-semibold mt-4">3. DATOS PERSONALES RECOPILADOS</h4>
+                <p>Recopilamos los siguientes datos personales:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Nombre completo</li>
+                  <li>Correo electrónico</li>
+                  <li>Número de teléfono (opcional)</li>
+                  <li>País de origen (opcional)</li>
+                  <li>Fotografía (opcional)</li>
+                  <li>Registro de actividades y asistencia</li>
+                </ul>
+                
+                <h4 className="font-semibold mt-4">4. DERECHOS DEL TITULAR</h4>
+                <p>Conforme a la LOPDP, usted tiene derecho a:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li><strong>Acceso:</strong> Conocer qué datos personales tenemos sobre usted.</li>
+                  <li><strong>Rectificación:</strong> Solicitar la corrección de datos inexactos o incompletos.</li>
+                  <li><strong>Supresión:</strong> Solicitar la eliminación de sus datos personales.</li>
+                  <li><strong>Portabilidad:</strong> Recibir sus datos en un formato estructurado.</li>
+                  <li><strong>Oposición:</strong> Oponerse al tratamiento de sus datos en ciertas circunstancias.</li>
+                  <li><strong>Revocación del consentimiento:</strong> Retirar su consentimiento en cualquier momento.</li>
+                </ul>
+                
+                <h4 className="font-semibold mt-4">5. SEGURIDAD DE LA INFORMACIÓN</h4>
+                <p>Implementamos medidas técnicas y organizativas apropiadas para proteger sus datos personales contra acceso no autorizado, alteración, divulgación o destrucción. Estas medidas incluyen:</p>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Encriptación de contraseñas mediante algoritmos hash seguros</li>
+                  <li>Comunicaciones cifradas (HTTPS)</li>
+                  <li>Control de acceso basado en roles</li>
+                  <li>Respaldo periódico de información</li>
+                </ul>
+                
+                <h4 className="font-semibold mt-4">6. CONSERVACIÓN DE DATOS</h4>
+                <p>Sus datos personales serán conservados durante el tiempo necesario para cumplir con las finalidades para las que fueron recopilados, y de acuerdo con lo establecido en la normativa ecuatoriana aplicable.</p>
+                
+                <h4 className="font-semibold mt-4">7. MENORES DE EDAD</h4>
+                <p>La plataforma no está dirigida a menores de 14 años. Si tiene entre 14 y 18 años, deberá contar con el consentimiento de sus padres o representantes legales para utilizar la plataforma.</p>
+                
+                <h4 className="font-semibold mt-4">8. CONTACTO PARA EJERCER SUS DERECHOS</h4>
+                <p>Para ejercer sus derechos ARCO o realizar consultas sobre el tratamiento de sus datos personales, puede contactarnos a través de:</p>
+                <p className="bg-gray-100 dark:bg-gray-800 p-3 rounded">
+                  <strong>Email:</strong> protecciondedatos@fabricadeideas.com<br/>
+                  <strong>Plazo de respuesta:</strong> 10 días hábiles según la LOPDP
+                </p>
+                
+                <h4 className="font-semibold mt-4">9. MODIFICACIONES</h4>
+                <p>Nos reservamos el derecho de modificar estos términos y condiciones. Las modificaciones serán notificadas a través de la plataforma y entrarán en vigor a partir de su publicación.</p>
+                
+                <h4 className="font-semibold mt-4">10. AUTORIDAD DE CONTROL</h4>
+                <p>Si considera que sus derechos han sido vulnerados, tiene derecho a presentar una reclamación ante la <strong>Defensoría del Pueblo del Ecuador</strong>, como autoridad de control en materia de protección de datos personales.</p>
+                
+                <div className="mt-6 p-4 bg-emerald-50 dark:bg-emerald-950 rounded-lg border border-emerald-200">
+                  <p className="font-semibold text-emerald-800">Al aceptar estos términos:</p>
+                  <ul className="list-disc pl-5 mt-2 text-sm text-emerald-700">
+                    <li>Consiente el tratamiento de sus datos personales según lo descrito.</li>
+                    <li>Acepta los términos y condiciones de uso de la plataforma.</li>
+                    <li>Declara haber leído y comprendido esta política.</li>
+                  </ul>
+                </div>
+              </div>
+            </ScrollArea>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowTermsDialog(false)}>
+                Cerrar
+              </Button>
+              <Button 
+                className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
+                onClick={() => {
+                  setAcceptedTerms(true);
+                  setShowTermsDialog(false);
+                }}
+              >
+                Acepto los términos
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Diálogo de Recuperación de Contraseña */}
+        <Dialog open={showForgotPasswordDialog} onOpenChange={setShowForgotPasswordDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Mail className="w-5 h-5 text-emerald-600" />
+                Recuperar Contraseña
+              </DialogTitle>
+              <DialogDescription>
+                Ingresa tu correo electrónico y te enviaremos instrucciones para restablecer tu contraseña.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              {resetEmailSent ? (
+                <div className="text-center py-4">
+                  <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-emerald-100 dark:bg-emerald-900 flex items-center justify-center">
+                    <Mail className="w-8 h-8 text-emerald-600" />
+                  </div>
+                  <h3 className="font-semibold text-lg mb-2">¡Email Enviado!</h3>
+                  <p className="text-sm text-muted-foreground">
+                    Si el correo está registrado, recibirás un email con instrucciones para restablecer tu contraseña.
+                    Revisa tu bandeja de entrada y la carpeta de spam.
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-2">
+                    <Label htmlFor="forgot-email">Correo electrónico</Label>
+                    <Input
+                      id="forgot-email"
+                      type="email"
+                      placeholder="tu@email.com"
+                      value={forgotPasswordEmail}
+                      onChange={(e) => setForgotPasswordEmail(e.target.value)}
+                    />
+                  </div>
+                  <Button 
+                    className="w-full bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
+                    onClick={handleForgotPassword}
+                    disabled={sendingResetEmail}
+                  >
+                    {sendingResetEmail ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                        Enviando...
+                      </>
+                    ) : (
+                      'Enviar instrucciones'
+                    )}
+                  </Button>
+                </>
+              )}
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowForgotPasswordDialog(false);
+                  setResetEmailSent(false);
+                }}
+              >
+                {resetEmailSent ? 'Cerrar' : 'Cancelar'}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Diálogo de Restablecer Contraseña */}
+        <Dialog open={showResetPasswordDialog} onOpenChange={setShowResetPasswordDialog}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Lock className="w-5 h-5 text-emerald-600" />
+                Restablecer Contraseña
+              </DialogTitle>
+              <DialogDescription>
+                Crea una nueva contraseña para tu cuenta.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="new-password">Nueva contraseña</Label>
+                <Input
+                  id="new-password"
+                  type="password"
+                  placeholder="Mínimo 6 caracteres"
+                  value={newResetPassword}
+                  onChange={(e) => setNewResetPassword(e.target.value)}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="confirm-new-password">Confirmar contraseña</Label>
+                <Input
+                  id="confirm-new-password"
+                  type="password"
+                  placeholder="Repite tu contraseña"
+                  value={confirmResetPassword}
+                  onChange={(e) => setConfirmResetPassword(e.target.value)}
+                />
+              </div>
+              {newResetPassword && confirmResetPassword && newResetPassword !== confirmResetPassword && (
+                <p className="text-sm text-red-500">Las contraseñas no coinciden</p>
+              )}
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => {
+                  setShowResetPasswordDialog(false);
+                  setResetToken('');
+                  setNewResetPassword('');
+                  setConfirmResetPassword('');
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button 
+                className="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700"
+                onClick={handleResetPassword}
+                disabled={resettingPassword || !newResetPassword || !confirmResetPassword}
+              >
+                {resettingPassword ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Guardando...
+                  </>
+                ) : (
+                  'Guardar nueva contraseña'
+                )}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Footer */}
         <footer className="py-6 text-center text-sm text-muted-foreground mt-auto">
