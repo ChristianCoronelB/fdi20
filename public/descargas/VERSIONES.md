@@ -1,5 +1,33 @@
 # Historial de Versiones - Fábrica de Ideas
 
+## v2.8.3 - 2025-05-04
+
+### Corrección Definitiva - Diálogos de Evaluación en Scope Global
+
+#### Problema
+Los diálogos del módulo de evaluación (Nueva Asignación y Evaluación) no se mostraban al hacer clic. Estaban ubicados DENTRO del bloque `AnimatePresence` que se renderiza condicionalmente, causando que no fueran accesibles.
+
+#### Solución
+- **Diálogos movidos al scope global** - Después del diálogo de votación global
+- **Fuera del AnimatePresence** - Renderizado independiente del estado de animación
+- **Ubicación correcta** - Entre el diálogo de votación y el footer global
+
+#### Sistema de Evaluación - Rúbrica 100 Puntos
+| Criterio | Puntos Máx. |
+|----------|-------------|
+| Innovación y Creatividad | 20 pts |
+| Viabilidad del Negocio | 15 pts |
+| Impacto Social/Ambiental | 15 pts |
+| Pitch (Presentación) | 20 pts |
+| Potencial de Escalamiento | 10 pts |
+| Entregable | 20 pts |
+| **TOTAL** | **100 pts** |
+
+#### Archivo
+- `fabrica-de-ideas-v2.8.3-bun.zip` (~527 KB)
+
+---
+
 ## v2.8.2 - 2025-05-04
 
 ### Corrección de Diálogos de Evaluación
