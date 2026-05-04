@@ -158,6 +158,7 @@ export async function POST(request: NextRequest) {
       execution,
       executionComment,
       generalComment,
+      totalScore: providedTotalScore, // Total score from frontend (sum over 100 points)
       status = 'DRAFT'
     } = body;
 
@@ -180,13 +181,11 @@ export async function POST(request: NextRequest) {
       }, { status: 404 });
     }
 
-    // Calculate total score
-    const validScores = [innovation, viability, impact, presentation, scalability, execution]
-      .filter(score => score > 0);
-    
-    const totalScore = validScores.length > 0
-      ? validScores.reduce((sum, score) => sum + score, 0) / validScores.length
-      : 0;
+    // Use provided total score (sum of all criteria, max 100 points)
+    // or calculate it if not provided
+    const totalScore = providedTotalScore ?? 
+      (innovation || 0) + (viability || 0) + (impact || 0) + 
+      (presentation || 0) + (scalability || 0) + (execution || 0);
 
     // Check if evaluation already exists
     const existingEvaluation = await db.evaluation.findUnique({
