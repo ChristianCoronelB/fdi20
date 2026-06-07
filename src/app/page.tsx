@@ -11,8 +11,11 @@ import {
   Camera, FileText, Medal, Gift, Sparkles, Timer, Play, Pause,
   RefreshCw, Send, MessageSquare, MoreVertical, Copy, Share2,
   Home, Building, Presentation, Lightbulb, Vote, Shield, Moon, Sun, Lock,
-  CheckCircle, Navigation, Crosshair, AlertTriangle
+  CheckCircle, Navigation, Crosshair, AlertTriangle, MapIcon
 } from 'lucide-react';
+import { invalidateCache } from '@/hooks/use-data';
+import { Maps } from '@/components/fabrica/Maps';
+import { QRScanner } from '@/components/fabrica/QRScanner';
 import { useTheme } from 'next-themes';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils-client';
@@ -1016,6 +1019,10 @@ export default function FabricaDeIdeasApp() {
         });
         setActivityDialogOpen(false);
         
+        // Invalidate cache to refresh data
+        invalidateCache('/api/activities');
+        invalidateCache('/api/dashboard');
+        
         toast.success('¡Actividad creada exitosamente!');
       } else {
         toast.error(data.error || 'Error al crear actividad');
@@ -1106,6 +1113,11 @@ export default function FabricaDeIdeasApp() {
       if (data.success) {
         setActivities(prev => prev.filter(a => a.id !== selectedActivityForEdit.id));
         setDeleteActivityDialogOpen(false);
+        
+        // Invalidate cache to refresh data
+        invalidateCache('/api/activities');
+        invalidateCache('/api/dashboard');
+        
         toast.success('Actividad eliminada correctamente');
       } else {
         toast.error(data.error || 'Error al eliminar actividad');
@@ -1159,6 +1171,11 @@ export default function FabricaDeIdeasApp() {
       if (data.success) {
         setActivities(prev => prev.map(a => a.id === selectedActivityForEdit.id ? data.data : a));
         setEditActivityDialogOpen(false);
+        
+        // Invalidate cache to refresh data
+        invalidateCache('/api/activities');
+        invalidateCache('/api/dashboard');
+        
         toast.success('Actividad actualizada correctamente');
       } else {
         toast.error(data.error || 'Error al actualizar actividad');
@@ -1242,6 +1259,21 @@ export default function FabricaDeIdeasApp() {
           setUser(prev => prev ? { ...prev, points: data.data.totalPoints } : prev);
         }
         
+        // Invalidate cache and register interaction
+        invalidateCache('/api/registrations');
+        invalidateCache('/api/activities');
+        
+        // Register interaction
+        fetch('/api/interactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            type: 'ACTIVITY_REGISTER', 
+            entityId: activity.id, 
+            entityType: 'ACTIVITY' 
+          }),
+        });
+        
         toast.success(data.message || `Te has registrado en "${activity.title}". ¡+5 puntos!`);
       } else {
         toast.error(data.error || 'Error al registrarse');
@@ -1300,6 +1332,22 @@ export default function FabricaDeIdeasApp() {
           setCanGenerateCertificate(data.data.canGenerateCertificate);
         }
         
+        // Invalidate cache and register interaction
+        invalidateCache('/api/attendance');
+        invalidateCache('/api/activities');
+        invalidateCache('/api/achievements');
+        
+        // Register interaction
+        fetch('/api/interactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            type: 'ACTIVITY_REGISTER', 
+            entityId: activity.id, 
+            entityType: 'ACTIVITY' 
+          }),
+        });
+        
         toast.success(data.message || `Check-in registrado. ¡+10 puntos!`);
       } else {
         toast.error(data.error || 'Error al hacer check-in');
@@ -1351,6 +1399,11 @@ export default function FabricaDeIdeasApp() {
           setAttendanceCount(data.data.completeAttendances);
           setCanGenerateCertificate(data.data.canGenerateCertificate);
         }
+        
+        // Invalidate cache
+        invalidateCache('/api/attendance');
+        invalidateCache('/api/activities');
+        invalidateCache('/api/achievements');
         
         toast.success(data.message || `Check-out registrado. ¡+15 puntos! (incluye bono)`);
       } else {
@@ -1933,6 +1986,11 @@ export default function FabricaDeIdeasApp() {
               ? data.data
               : r
           ));
+          
+          // Invalidate cache
+          invalidateCache('/api/rooms');
+          invalidateCache('/api/dashboard');
+          
           toast.success(`Sala "${roomForm.name}" actualizada correctamente`);
         } else {
           toast.error(data.error || 'Error al actualizar la sala');
@@ -1953,6 +2011,11 @@ export default function FabricaDeIdeasApp() {
         
         if (data.success && data.data) {
           setRoomsList(prev => [...prev, data.data]);
+          
+          // Invalidate cache
+          invalidateCache('/api/rooms');
+          invalidateCache('/api/dashboard');
+          
           toast.success(`Sala "${roomForm.name}" creada correctamente`);
         } else {
           toast.error(data.error || 'Error al crear la sala');
@@ -2195,6 +2258,11 @@ export default function FabricaDeIdeasApp() {
         
         if (data.success && data.data) {
           setProjects(prev => prev.map(p => p.id === selectedProjectForEdit.id ? data.data : p));
+          
+          // Invalidate cache
+          invalidateCache('/api/projects');
+          invalidateCache('/api/dashboard');
+          
           toast.success(`Proyecto "${projectForm.name}" actualizado correctamente`);
         } else {
           toast.error(data.error || 'Error al actualizar el proyecto');
@@ -2214,6 +2282,11 @@ export default function FabricaDeIdeasApp() {
         
         if (data.success && data.data) {
           setProjects(prev => [...prev, data.data]);
+          
+          // Invalidate cache
+          invalidateCache('/api/projects');
+          invalidateCache('/api/dashboard');
+          
           toast.success(`Proyecto "${projectForm.name}" creado correctamente`);
         } else {
           toast.error(data.error || 'Error al crear el proyecto');
@@ -2323,6 +2396,22 @@ export default function FabricaDeIdeasApp() {
         if (data.meta?.totalPoints !== undefined) {
           setUser(prev => prev ? { ...prev, points: data.meta.totalPoints } : prev);
         }
+        
+        // Invalidate cache and register interaction
+        invalidateCache('/api/votes');
+        invalidateCache('/api/projects');
+        invalidateCache('/api/dashboard');
+        
+        // Register interaction
+        fetch('/api/interactions', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            type: 'VOTE', 
+            entityId: project.id, 
+            entityType: 'PROJECT' 
+          }),
+        });
         
         // Custom message based on vote type
         const pointsEarned = data.meta?.pointsEarned || 0;
@@ -2828,6 +2917,23 @@ export default function FabricaDeIdeasApp() {
           : 'Borrador guardado'
         );
         setEvaluationDialogOpen(false);
+        
+        // Invalidate cache and register interaction if submitted
+        invalidateCache('/api/evaluations');
+        invalidateCache('/api/projects');
+        
+        if (submit) {
+          // Register interaction
+          fetch('/api/interactions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              type: 'EVALUATION_SUBMIT', 
+              entityId: selectedProjectForEvaluation.id, 
+              entityType: 'PROJECT' 
+            }),
+          });
+        }
       } else {
         toast.error(data.error || 'Error al guardar la evaluación');
       }
@@ -3369,6 +3475,11 @@ export default function FabricaDeIdeasApp() {
         const data = await res.json();
         if (data.success) {
           setEventsList(prev => prev.map(e => e.id === selectedEventForEdit.id ? data.data : e));
+          
+          // Invalidate cache
+          invalidateCache('/api/events');
+          invalidateCache('/api/dashboard');
+          
           toast.success(`Evento "${eventForm.name}" actualizado correctamente`);
         } else {
           toast.error(data.error || 'Error al actualizar evento');
@@ -3393,6 +3504,11 @@ export default function FabricaDeIdeasApp() {
         const data = await res.json();
         if (data.success) {
           setEventsList(prev => [...prev, data.data]);
+          
+          // Invalidate cache
+          invalidateCache('/api/events');
+          invalidateCache('/api/dashboard');
+          
           toast.success(`Evento "${eventForm.name}" creado correctamente`);
         } else {
           toast.error(data.error || 'Error al crear evento');
@@ -3436,6 +3552,11 @@ export default function FabricaDeIdeasApp() {
       if (data.success) {
         setEventsList(prev => prev.filter(e => e.id !== selectedEventForEdit.id));
         setDeleteEventDialogOpen(false);
+        
+        // Invalidate cache
+        invalidateCache('/api/events');
+        invalidateCache('/api/dashboard');
+        
         toast.success('Evento eliminado correctamente');
       } else {
         toast.error(data.error || 'Error al eliminar evento');
@@ -4373,6 +4494,14 @@ export default function FabricaDeIdeasApp() {
                   >
                     <MapPin className="w-5 h-5" />
                     Mapa
+                  </Button>
+                  <Button
+                    variant={activeTab === 'maps' ? 'secondary' : 'ghost'}
+                    className="w-full justify-start gap-3"
+                    onClick={() => setActiveTab('maps')}
+                  >
+                    <MapPin className="w-5 h-5" />
+                    Mapas
                   </Button>
                   <Button
                     variant={activeTab === 'projects-view' ? 'secondary' : 'ghost'}
@@ -9334,6 +9463,11 @@ export default function FabricaDeIdeasApp() {
                   </div>
                 )}
 
+                {/* Maps View with Leaflet */}
+                {activeTab === 'maps' && (
+                  <Maps />
+                )}
+
                 {/* Projects View */}
                 {activeTab === 'projects-view' && (
                   <div className="space-y-6">
@@ -9568,263 +9702,13 @@ export default function FabricaDeIdeasApp() {
 
                 {/* QR Scanner */}
                 {activeTab === 'scanner' && (
-                  <div className="space-y-6">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h1 className="text-3xl font-bold">Escáner QR</h1>
-                        <p className="text-muted-foreground">Escanea códigos QR para registrar asistencia y ganar puntos</p>
-                      </div>
-                    </div>
-
-                    <div className="grid gap-6 lg:grid-cols-2">
-                      <Card>
-                        <CardHeader>
-                          <CardTitle className="flex items-center gap-2">
-                            <Camera className="w-5 h-5" />
-                            Escáner
-                          </CardTitle>
-                          <CardDescription>
-                            {scannerActive 
-                              ? 'Apunta el código QR dentro del marco' 
-                              : 'Activa la cámara o sube una imagen con QR'}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                          {/* Camera / Scanner View */}
-                          <div className="aspect-square bg-gray-900 rounded-lg flex items-center justify-center relative overflow-hidden">
-                            {scannerActive ? (
-                              <>
-                                {/* QR Scanner with camera */}
-                                <div id="qr-reader" className="w-full h-full [&>div]:h-full" />
-                                
-                                {/* Scanning overlay */}
-                                <div className="absolute inset-4 border-2 border-white/50 rounded-lg pointer-events-none">
-                                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-500 rounded-tl-lg" />
-                                  <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-500 rounded-tr-lg" />
-                                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-emerald-500 rounded-bl-lg" />
-                                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-emerald-500 rounded-br-lg" />
-                                </div>
-                                
-                                {scanning && (
-                                  <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                                    <RefreshCw className="w-12 h-12 text-white animate-spin" />
-                                  </div>
-                                )}
-                              </>
-                            ) : (
-                              <>
-                                {/* Placeholder when camera is off */}
-                                <div className="absolute inset-4 border-2 border-white/50 rounded-lg">
-                                  <div className="absolute top-0 left-0 w-8 h-8 border-t-4 border-l-4 border-emerald-500 rounded-tl-lg" />
-                                  <div className="absolute top-0 right-0 w-8 h-8 border-t-4 border-r-4 border-emerald-500 rounded-tr-lg" />
-                                  <div className="absolute bottom-0 left-0 w-8 h-8 border-b-4 border-l-4 border-emerald-500 rounded-bl-lg" />
-                                  <div className="absolute bottom-0 right-0 w-8 h-8 border-b-4 border-r-4 border-emerald-500 rounded-br-lg" />
-                                </div>
-                                <div className="text-white text-center z-10">
-                                  <QrCode className="w-16 h-16 mx-auto mb-3 opacity-50" />
-                                  <p className="text-sm opacity-75">Activa la cámara o sube una imagen</p>
-                                </div>
-                              </>
-                            )}
-                          </div>
-                          
-                          {/* Action buttons */}
-                          <div className="mt-4 flex gap-2">
-                            {scannerActive ? (
-                              <Button 
-                                variant="destructive"
-                                className="flex-1"
-                                onClick={handleDeactivateScanner}
-                              >
-                                <X className="w-4 h-4 mr-2" />
-                                Desactivar Cámara
-                              </Button>
-                            ) : (
-                              <Button 
-                                className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600"
-                                onClick={handleActivateScanner}
-                              >
-                                <Camera className="w-4 h-4 mr-2" />
-                                Activar Cámara
-                              </Button>
-                            )}
-                            <Button 
-                              variant="outline"
-                              onClick={() => fileInputRef.current?.click()}
-                              disabled={scanning}
-                            >
-                              {scanning ? (
-                                <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
-                              ) : (
-                                <Upload className="w-4 h-4 mr-2" />
-                              )}
-                              Subir Imagen
-                            </Button>
-                            <input
-                              ref={fileInputRef}
-                              type="file"
-                              accept="image/*"
-                              className="hidden"
-                              onChange={handleFileUpload}
-                            />
-                          </div>
-                          
-                          {/* Manual code entry */}
-                          <div className="mt-4">
-                            <Label>O ingresa el código manualmente</Label>
-                            <div className="flex gap-2 mt-2">
-                              <Input 
-                                placeholder="Ej: ABCD1234"
-                                id="manual-qr-code"
-                                className="flex-1 uppercase"
-                                onKeyDown={(e) => {
-                                  if (e.key === 'Enter') {
-                                    const input = e.target as HTMLInputElement;
-                                    handleManualCodeEntry(input.value);
-                                  }
-                                }}
-                              />
-                              <Button 
-                                variant="secondary"
-                                onClick={() => {
-                                  const input = document.getElementById('manual-qr-code') as HTMLInputElement;
-                                  handleManualCodeEntry(input?.value || '');
-                                }}
-                                disabled={scanning}
-                              >
-                                <Send className="w-4 h-4" />
-                              </Button>
-                            </div>
-                          </div>
-                        </CardContent>
-                      </Card>
-
-                      <div className="space-y-4">
-                        {/* Scan Result */}
-                        {scanResult && (
-                          <Card className={scanResult.error ? "border-red-500" : "border-emerald-500"}>
-                            <CardHeader>
-                              <CardTitle className="flex items-center gap-2">
-                                {scanResult.error ? (
-                                  <X className="w-5 h-5 text-red-500" />
-                                ) : (
-                                  <CheckCircle className="w-5 h-5 text-emerald-500" />
-                                )}
-                                Resultado del Escaneo
-                              </CardTitle>
-                            </CardHeader>
-                            <CardContent>
-                              {scanResult.error ? (
-                                <p className="text-red-500">{scanResult.message}</p>
-                              ) : (
-                                <div className="space-y-3">
-                                  <div className="flex items-center gap-3 p-3 bg-emerald-50 dark:bg-emerald-900/20 rounded-lg">
-                                    <div className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center text-white">
-                                      {scanResult.type === 'ACTIVITY' && <Presentation className="w-6 h-6" />}
-                                      {scanResult.type === 'PROJECT' && <Lightbulb className="w-6 h-6" />}
-                                      {scanResult.type === 'ROOM' && <Building className="w-6 h-6" />}
-                                      {scanResult.type === 'USER' && <User className="w-6 h-6" />}
-                                    </div>
-                                    <div className="flex-1">
-                                      <p className="font-bold text-lg">
-                                        {scanResult.activity?.title || 
-                                         scanResult.project?.title || 
-                                         scanResult.room?.name || 
-                                         scanResult.user?.name || 'QR Escaneado'}
-                                      </p>
-                                      <p className="text-sm text-muted-foreground">
-                                        {scanResult.type === 'ACTIVITY' && 'Actividad'}
-                                        {scanResult.type === 'PROJECT' && 'Proyecto'}
-                                        {scanResult.type === 'ROOM' && 'Sala'}
-                                        {scanResult.type === 'USER' && 'Usuario'}
-                                        {scanResult.attendanceComplete && ' • Asistencia Completa ✓'}
-                                      </p>
-                                    </div>
-                                    {scanResult.pointsEarned > 0 && (
-                                      <Badge className="bg-emerald-500 text-lg px-3 py-1">
-                                        +{scanResult.pointsEarned} pts
-                                      </Badge>
-                                    )}
-                                  </div>
-                                  
-                                  {scanResult.activityDetails && (
-                                    <div className="text-sm text-muted-foreground space-y-1">
-                                      {scanResult.activityDetails.room && (
-                                        <p>📍 {scanResult.activityDetails.room.name}</p>
-                                      )}
-                                      <p>🎯 {scanResult.completeAttendances}/3 asistencias para certificado</p>
-                                    </div>
-                                  )}
-                                  
-                                  {scanResult.canGenerateCertificate && (
-                                    <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
-                                      <p className="text-sm text-amber-800 dark:text-amber-200 flex items-center gap-2">
-                                        <Award className="w-4 h-4" />
-                                        ¡Ya puedes generar tu certificado!
-                                      </p>
-                                    </div>
-                                  )}
-                                </div>
-                              )}
-                            </CardContent>
-                          </Card>
-                        )}
-
-                        {/* Recent Scans */}
-                        <Card>
-                          <CardHeader>
-                            <CardTitle>Últimos Escaneos</CardTitle>
-                          </CardHeader>
-                          <CardContent>
-                            {recentScans.length === 0 ? (
-                              <div className="text-center py-8 text-muted-foreground">
-                                <QrCode className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                                <p className="text-sm">No hay escaneos recientes</p>
-                              </div>
-                            ) : (
-                              <div className="space-y-3 max-h-64 overflow-y-auto">
-                                {recentScans.map((scan, i) => (
-                                  <div key={i} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                                    <div className="w-10 h-10 rounded-full bg-emerald-500/10 flex items-center justify-center">
-                                      <Check className="w-5 h-5 text-emerald-500" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <p className="font-medium truncate">{scan.name}</p>
-                                      <p className="text-xs text-muted-foreground">{scan.type} • {scan.time}</p>
-                                    </div>
-                                    {scan.points > 0 && (
-                                      <Badge className="bg-emerald-500">+{scan.points} pts</Badge>
-                                    )}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                          </CardContent>
-                        </Card>
-
-                        {/* Points Summary */}
-                        <Card className="bg-gradient-to-br from-emerald-500 to-teal-600 text-white">
-                          <CardContent className="pt-6">
-                            <div className="flex items-center gap-4">
-                              <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center">
-                                <Zap className="w-6 h-6" />
-                              </div>
-                              <div>
-                                <p className="text-sm opacity-90">Puntos ganados hoy</p>
-                                <p className="text-3xl font-bold">+{totalPointsToday}</p>
-                              </div>
-                            </div>
-                            <div className="mt-4 pt-4 border-t border-white/20">
-                              <div className="flex justify-between text-sm">
-                                <span className="opacity-90">Total acumulado</span>
-                                <span className="font-bold">{user?.points || 0} pts</span>
-                              </div>
-                            </div>
-                          </CardContent>
-                        </Card>
-                      </div>
-                    </div>
-                  </div>
+                  <QRScanner 
+                    userRole={user?.role || 'PARTICIPANT'} 
+                    onScanSuccess={(result) => {
+                      // Refresh user data after successful scan
+                      loadUserData();
+                    }}
+                  />
                 )}
 
                 {/* Ranking */}
