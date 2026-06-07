@@ -1559,6 +1559,11 @@ export default function FabricaDeIdeasApp() {
         setUsersList(prev => [...prev, data.data]);
         setNewUserDialogOpen(false);
         setNewUserForm({ name: '', email: '', password: '', role: 'PARTICIPANT' });
+        
+        // Invalidate cache
+        invalidateCache('/api/users');
+        invalidateCache('/api/dashboard');
+        
         toast.success(`Usuario "${newUserForm.name}" creado exitosamente`);
       } else {
         toast.error(data.error || 'Error al crear usuario');
@@ -1683,6 +1688,10 @@ export default function FabricaDeIdeasApp() {
             ? { ...u, name: editUserForm.name, role: editUserForm.role as User['role'] }
             : u
         ));
+        
+        // Invalidate cache
+        invalidateCache('/api/users');
+        invalidateCache('/api/dashboard');
         
         setEditUserDialogOpen(false);
         toast.success(`Usuario "${editUserForm.name}" actualizado correctamente`);
@@ -2102,14 +2111,32 @@ export default function FabricaDeIdeasApp() {
     
     setDeletingRoom(true);
     
-    // Simulate API call
-    await new Promise(resolve => setTimeout(resolve, 500));
+    try {
+      const res = await fetch(`/api/rooms/${selectedRoomForEdit.id}`, {
+        method: 'DELETE',
+      });
+      
+      const data = await res.json();
+      
+      if (data.success) {
+        setRoomsList(prev => prev.filter(r => r.id !== selectedRoomForEdit.id));
+        
+        // Invalidate cache
+        invalidateCache('/api/rooms');
+        invalidateCache('/api/dashboard');
+        
+        toast.success('Sala eliminada correctamente');
+      } else {
+        toast.error(data.error || 'Error al eliminar la sala');
+      }
+    } catch (error) {
+      console.error('Error deleting room:', error);
+      toast.error('Error al eliminar la sala');
+    }
     
-    setRoomsList(prev => prev.filter(r => r.id !== selectedRoomForEdit.id));
     setDeleteRoomDialogOpen(false);
     setDeletingRoom(false);
     setSelectedRoomForEdit(null);
-    toast.success('Sala eliminada correctamente');
   };
 
   // Handle new room
@@ -2213,6 +2240,11 @@ export default function FabricaDeIdeasApp() {
       
       if (data.success) {
         setProjects(prev => prev.filter(p => p.id !== selectedProjectForEdit.id));
+        
+        // Invalidate cache
+        invalidateCache('/api/projects');
+        invalidateCache('/api/dashboard');
+        
         toast.success('Proyecto eliminado correctamente');
       } else {
         toast.error(data.error || 'Error al eliminar el proyecto');
