@@ -49,3 +49,8 @@ prompt
 server.log
 # Skills directory
 /skills/
+# Archivos grandes
+*.zip
+public/descargas/
+fabrica-de-ideas-*.zip
+skills/ppt/scripts/tectonic
