@@ -1,4 +1,9 @@
 #!/bin/bash
 cd /home/z/my-project
-echo "Iniciando servidor Next.js..."
-exec node node_modules/.bin/next dev -p 3000
+while true; do
+    echo "[$(date)] Starting Next.js server..."
+    bun run dev
+    EXIT_CODE=$?
+    echo "[$(date)] Server exited with code $EXIT_CODE, restarting in 3 seconds..."
+    sleep 3
+done
