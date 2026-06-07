@@ -1,9 +1,7 @@
 #!/bin/bash
 cd /home/z/my-project
 while true; do
-    echo "[$(date)] Starting Next.js server..."
-    bun run dev
-    EXIT_CODE=$?
-    echo "[$(date)] Server exited with code $EXIT_CODE, restarting in 3 seconds..."
+    bun run dev 2>&1
+    echo "Servidor terminado, reiniciando en 3 segundos..."
     sleep 3
 done
