@@ -25,6 +25,7 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
   const scannerRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const mountedRef = useRef(true);
+  const isScanningRef = useRef(false); // Previene escaneos múltiples
 
   const canScan = ['ADMIN', 'ORGANIZER', 'MODERATOR', 'EVALUATOR', 'PARTICIPANT'].includes(userRole);
 
@@ -32,13 +33,41 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
     return () => {
       mountedRef.current = false;
       if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
+        try {
+          scannerRef.current.stop().catch(() => {});
+        } catch (e) {}
       }
     };
   }, []);
 
+  // Función para detener el escáner
+  const stopScanner = async () => {
+    if (scannerRef.current) {
+      try {
+        await scannerRef.current.stop();
+        scannerRef.current.clear();
+      } catch (e) {
+        console.log('Scanner already stopped');
+      }
+      scannerRef.current = null;
+    }
+    
+    const container = document.getElementById('scanner-container');
+    if (container) container.innerHTML = '';
+    
+    setScanning(false);
+    isScanningRef.current = false;
+  };
+
+  // Procesar código QR
   const processQrCode = async (decodedText: string) => {
-    if (processing) return;
+    // Evitar procesamiento múltiple
+    if (isScanningRef.current) return;
+    isScanningRef.current = true;
+    
+    // Detener cámara inmediatamente
+    await stopScanner();
+    
     setProcessing(true);
 
     try {
@@ -51,7 +80,6 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
       const data = await res.json();
       
       if (data.success) {
-        // Check if already scanned
         if (data.data?.alreadyScanned) {
           setScanResult('duplicate');
           setResultMessage(data.data?.message || 'Este código ya fue escaneado');
@@ -70,11 +98,6 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
           onScanSuccess?.(data.data);
           
           if (navigator.vibrate) navigator.vibrate(200);
-          
-          // Stop scanner after success
-          setTimeout(() => {
-            if (mountedRef.current && scanning) stopScanner();
-          }, 2000);
         }
       } else {
         setScanResult('error');
@@ -90,17 +113,23 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
       setProcessing(false);
     }
 
+    // Limpiar resultado después de 5 segundos
     setTimeout(() => {
       if (mountedRef.current) {
         setScanResult(null);
         setResultMessage('');
         setResultData(null);
       }
-    }, 4000);
+    }, 5000);
   };
 
+  // Iniciar escáner
   const startScanner = async () => {
     setCameraError(null);
+    setScanResult(null);
+    setResultMessage('');
+    setResultData(null);
+    isScanningRef.current = false;
 
     try {
       const { Html5Qrcode } = await import('html5-qrcode');
@@ -123,8 +152,13 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
       await html5QrCode.start(
         { facingMode: 'environment' },
         { fps: 10, qrbox: { width: 250, height: 250 } },
-        (decodedText) => processQrCode(decodedText),
-        () => {}
+        (decodedText) => {
+          // Solo procesar si no estamos ya procesando
+          if (!isScanningRef.current) {
+            processQrCode(decodedText);
+          }
+        },
+        () => {} // Ignorar errores de escaneo
       );
 
       setScanning(true);
@@ -135,29 +169,13 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
     }
   };
 
-  const stopScanner = async () => {
-    setScanning(false);
-    
-    if (scannerRef.current) {
-      try {
-        await scannerRef.current.stop();
-        scannerRef.current.clear();
-      } catch (e) {}
-      scannerRef.current = null;
-    }
-
-    const container = document.getElementById('scanner-container');
-    if (container) container.innerHTML = '';
-    
-    setScanResult(null);
-    setResultMessage('');
-  };
-
+  // Subir imagen con QR
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (!file) return;
     
     setProcessing(true);
+    setScanResult(null);
 
     try {
       const { Html5Qrcode } = await import('html5-qrcode');
@@ -172,6 +190,8 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
       
       try {
         const decodedText = await html5QrCode.scanFile(file, true);
+        // Procesar como si fuera escaneado por cámara
+        isScanningRef.current = false;
         await processQrCode(decodedText);
       } catch {
         toast.error('No se pudo leer el código QR de la imagen');
@@ -247,10 +267,17 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
           <div className="relative bg-gray-900 rounded-lg overflow-hidden min-h-[200px]">
             <div id="scanner-container" style={{ minHeight: scanning ? '300px' : 'auto' }} />
             
-            {!scanning && (
+            {!scanning && !processing && (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 p-4">
                 <Camera className="w-12 h-12 mb-2" />
                 <p>Presiona "Iniciar Cámara" para escanear</p>
+              </div>
+            )}
+            
+            {processing && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-4 bg-gray-900/80">
+                <Loader2 className="w-12 h-12 mb-2 animate-spin" />
+                <p>Procesando código...</p>
               </div>
             )}
           </div>
@@ -262,22 +289,18 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
           )}
           
           <div className="flex gap-2 mt-4">
-            {scanning ? (
-              <Button variant="outline" className="flex-1" onClick={stopScanner} disabled={processing}>
-                Detener Cámara
-              </Button>
-            ) : (
-              <>
-                <Button className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600" onClick={startScanner} disabled={processing}>
-                  <Camera className="w-4 h-4 mr-2" />
-                  Iniciar Cámara
-                </Button>
-                <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
-                <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={processing}>
-                  {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
-                </Button>
-              </>
-            )}
+            <Button 
+              className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600" 
+              onClick={startScanner} 
+              disabled={processing}
+            >
+              <Camera className="w-4 h-4 mr-2" />
+              Iniciar Cámara
+            </Button>
+            <input ref={fileInputRef} type="file" accept="image/*" className="hidden" onChange={handleFileUpload} />
+            <Button variant="outline" onClick={() => fileInputRef.current?.click()} disabled={processing}>
+              {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
+            </Button>
           </div>
         </CardContent>
       </Card>
@@ -310,7 +333,7 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
         <CardContent className="py-4 space-y-1 text-sm text-gray-600">
           <p>1. Presiona <strong>"Iniciar Cámara"</strong></p>
           <p>2. Apunta al código QR</p>
-          <p>3. El escaneo es automático</p>
+          <p>3. El escaneo es automático y la cámara se cierra</p>
           <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-amber-700 text-xs">
             <strong>Nota:</strong> Cada código QR solo puede escanearse una vez.
           </div>
