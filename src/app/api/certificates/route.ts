@@ -90,8 +90,8 @@ export async function POST(request: NextRequest) {
     }
     
     const body = await request.json();
-    const { userId, eventId, type = 'attendance' } = body;
-    
+    let { userId, eventId, type = 'attendance' } = body;
+
     // Only admins can generate certificates for other users
     const targetUserId = userId || session.userId;
     if (targetUserId !== session.userId && session.role !== 'ADMIN' && session.role !== 'ORGANIZER') {
@@ -100,17 +100,36 @@ export async function POST(request: NextRequest) {
         { status: 403 }
       );
     }
-    
+
     // Get user info
     const user = await db.user.findUnique({
       where: { id: targetUserId },
     });
-    
+
     if (!user) {
       return NextResponse.json(
         { success: false, error: 'Usuario no encontrado' },
         { status: 404 }
       );
+    }
+
+    // If no eventId provided, get the first active event or the first event available
+    if (!eventId) {
+      const activeEvent = await db.event.findFirst({
+        where: { isActive: true },
+        orderBy: { createdAt: 'desc' },
+      });
+      if (activeEvent) {
+        eventId = activeEvent.id;
+      } else {
+        // If no active event, get the first event
+        const anyEvent = await db.event.findFirst({
+          orderBy: { createdAt: 'desc' },
+        });
+        if (anyEvent) {
+          eventId = anyEvent.id;
+        }
+      }
     }
     
     // Check attendance requirements for participation certificate
