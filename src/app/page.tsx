@@ -5809,6 +5809,12 @@ export default function FabricaDeIdeasApp() {
                                       <DropdownMenuItem onClick={() => handleGenerateActivityQR(activity)}>
                                         <QrCode className="w-4 h-4 mr-2" /> Generar QR
                                       </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => {
+                                        window.open(`/api/reports/activity-participants?activityId=${activity.id}&format=pdf`, '_blank');
+                                      }}>
+                                        <Download className="w-4 h-4 mr-2" /> Descargar Reporte
+                                      </DropdownMenuItem>
+                                      <DropdownMenuSeparator />
                                       <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteActivityClick(activity)}>
                                         <Trash2 className="w-4 h-4 mr-2" /> Eliminar
                                       </DropdownMenuItem>
@@ -9766,7 +9772,7 @@ export default function FabricaDeIdeasApp() {
 
                     {/* Top 3 */}
                     <div className="grid gap-4 md:grid-cols-3">
-                      {mockLeaderboard.slice(0, 3).map((entry, i) => (
+                      {(leaderboard.length > 0 ? leaderboard : mockLeaderboard).slice(0, 3).map((entry, i) => (
                         <motion.div
                           key={i}
                           initial={{ opacity: 0, y: 20 }}
@@ -9784,6 +9790,7 @@ export default function FabricaDeIdeasApp() {
                             <CardContent className="pt-8 text-center">
                               <div className="relative inline-block">
                                 <Avatar className="w-20 h-20 mx-auto mb-4">
+                                  <AvatarImage src={entry.avatar} />
                                   <AvatarFallback className="text-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-white">
                                     {getInitials(entry.name)}
                                   </AvatarFallback>
@@ -9792,7 +9799,7 @@ export default function FabricaDeIdeasApp() {
                                   "absolute -top-1 -right-1 w-8 h-8 rounded-full flex items-center justify-center text-white font-bold text-sm",
                                   i === 0 ? "bg-amber-400" : i === 1 ? "bg-gray-400" : "bg-amber-700"
                                 )}>
-                                  {entry.rank}
+                                  {entry.rank || i + 1}
                                 </div>
                               </div>
                               <h3 className="font-bold text-lg">{entry.name}</h3>
@@ -9815,7 +9822,7 @@ export default function FabricaDeIdeasApp() {
                       </CardHeader>
                       <CardContent>
                         <div className="space-y-2">
-                          {mockLeaderboard.map((entry, i) => (
+                          {(leaderboard.length > 0 ? leaderboard : mockLeaderboard).map((entry, i) => (
                             <div
                               key={i}
                               className={cn(
@@ -9827,9 +9834,10 @@ export default function FabricaDeIdeasApp() {
                                 "w-10 h-10 rounded-full flex items-center justify-center font-bold text-white",
                                 i === 0 ? "bg-amber-400" : i === 1 ? "bg-gray-400" : i === 2 ? "bg-amber-700" : "bg-gray-300 dark:bg-gray-600"
                               )}>
-                                {entry.rank}
+                                {entry.rank || i + 1}
                               </div>
                               <Avatar>
+                                <AvatarImage src={entry.avatar} />
                                 <AvatarFallback>{getInitials(entry.name)}</AvatarFallback>
                               </Avatar>
                               <div className="flex-1">

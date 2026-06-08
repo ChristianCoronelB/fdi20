@@ -626,3 +626,27 @@ Stage Summary:
 - ✅ Dashboard carga correctamente
 - ✅ Pestaña "Logros" accesible con todas las secciones
 
+
+---
+Task ID: 2
+Agent: Main
+Task: Implementar descarga de certificados, ranking con datos reales y reportes de participantes
+
+Work Log:
+- Verificada la API de descarga de certificados (`/api/certificates/download`)
+- Actualizado el módulo de ranking para usar datos reales de la base de datos
+- Creada nueva API de reportes de participantes (`/api/reports/activity-participants`)
+- Agregada opción "Descargar Reporte" en el menú de cada actividad (vista admin)
+- El reporte PDF incluye:
+  - Información de la actividad
+  - Resumen de asistencias
+  - Lista de participantes con check-in/check-out
+  - Registrados sin asistencia
+
+Stage Summary:
+- ✅ Descarga de certificados funciona correctamente
+- ✅ Ranking muestra datos reales de usuarios (Christian Coronel - 728 pts, Administrador - 110 pts)
+- ✅ Reportes de participantes descargables en PDF desde el admin
+- ✅ Registro de asistencia visible en pestaña Logros
+- ✅ Requisito de 3 asistencias completas para generar certificado
+
