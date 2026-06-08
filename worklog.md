@@ -567,3 +567,33 @@ Stage Summary:
 - Organizador: organizer@fabricadeideas.com / org123
 - Moderador: moderator@fabricadeideas.com / mod123
 - Participantes: user1@fabricadeideas.com / user123
+
+---
+Task ID: 18
+Agent: main
+Task: Fix QR Scanner camera and simplify location validation
+
+Work Log:
+- Identified issues with QRScanner component:
+  1. Camera showed video but didn't scan QR codes automatically
+  2. Used raw video element instead of html5-qrcode scanner
+  3. Location validation was overly complex with watchPosition
+- Completely rewrote QRScanner.tsx:
+  - Used Html5Qrcode properly with start() method for camera scanning
+  - Scanner automatically detects and processes QR codes
+  - Simplified location validation - removed complex GPS tracking
+  - Added handleScanSuccess for automatic QR detection callback
+  - Added camera error state with user-friendly messages
+  - Added vibration feedback on successful scan (mobile)
+  - Improved UI with clearer instructions
+  - File upload option still available as alternative
+- Fixed naming conflict:
+  - Renamed internal function from onScanSuccess to handleScanSuccess
+  - Prop callback remains as onScanSuccess
+
+Stage Summary:
+- QR scanner now works correctly with automatic detection
+- Camera scanning fully functional using html5-qrcode library
+- Location validation simplified (removed for basic QR types)
+- Better UX with clear feedback and instructions
+- Vibration feedback on successful scan for mobile devices

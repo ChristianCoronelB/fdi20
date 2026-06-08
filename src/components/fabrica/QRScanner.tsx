@@ -1,18 +1,12 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { QrCode, Camera, CheckCircle, XCircle, RefreshCw, MapPin, Navigation, AlertTriangle, Loader2 } from 'lucide-react';
+import { QrCode, Camera, CheckCircle, XCircle, MapPin, Upload, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { toast } from 'sonner';
-import {
-  validateLocationForQR,
-  formatDistance,
-  type Coordinates
-} from '@/lib/geolocation';
 import { invalidateCache } from '@/hooks/use-data';
 
 interface QRScannerProps {
@@ -20,287 +14,90 @@ interface QRScannerProps {
   onScanSuccess?: (result: any) => void;
 }
 
-interface Room {
-  id: string;
-  name: string;
-  latitude?: number | null;
-  longitude?: number | null;
-  building?: string;
-  floor?: string;
-}
-
 export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
   const [scanning, setScanning] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [lastScan, setLastScan] = useState<string | null>(null);
   const [scanResult, setScanResult] = useState<'success' | 'error' | null>(null);
   const [resultMessage, setResultMessage] = useState<string>('');
   const [resultData, setResultData] = useState<any>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
   
-  // Location states
-  const [userLocation, setUserLocation] = useState<Coordinates | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
-  const [gettingLocation, setGettingLocation] = useState(false);
-  const [nearbyRoom, setNearbyRoom] = useState<Room | null>(null);
-  const [distanceToRoom, setDistanceToRoom] = useState<number | null>(null);
-  
-  // Rooms data for location validation
-  const [rooms, setRooms] = useState<Room[]>([]);
-  
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const scannerRef = useRef<any>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const watchIdRef = useRef<number | null>(null);
+  const scannerContainerId = 'qr-scanner-container';
 
-  const canScan = userRole === 'ADMIN' || userRole === 'ORGANIZER' || userRole === 'MODERATOR' || userRole === 'PARTICIPANT';
-  const MAX_DISTANCE_METERS = 30;
+  const canScan = userRole === 'ADMIN' || userRole === 'ORGANIZER' || userRole === 'MODERATOR' || userRole === 'EVALUATOR' || userRole === 'PARTICIPANT';
 
-  // Load rooms for location validation
-  useEffect(() => {
-    const fetchRooms = async () => {
-      try {
-        const res = await fetch('/api/rooms?limit=100');
-        if (res.ok) {
-          const data = await res.json();
-          if (data.success) {
-            setRooms(data.data.rooms || data.data || []);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching rooms:', error);
-      }
-    };
-    fetchRooms();
-  }, []);
-
-  // Start watching location when scanning
-  useEffect(() => {
-    if (scanning && canScan) {
-      // Get initial position
-      getCurrentLocation();
-      
-      // Watch position
-      if ('geolocation' in navigator) {
-        watchIdRef.current = navigator.geolocation.watchPosition(
-          (position) => {
-            const coords: Coordinates = {
-              latitude: position.coords.latitude,
-              longitude: position.coords.longitude,
-            };
-            setUserLocation(coords);
-            setLocationError(null);
-            
-            // Find nearby room
-            findNearbyRoom(coords);
-          },
-          (error) => {
-            console.error('Geolocation error:', error);
-            if (error.code === error.PERMISSION_DENIED) {
-              setLocationError('Permiso de ubicación denegado. Habilita la ubicación para escanear QRs.');
-            } else {
-              setLocationError('No se pudo obtener tu ubicación.');
-            }
-          },
-          {
-            enableHighAccuracy: true,
-            timeout: 10000,
-            maximumAge: 5000,
-          }
-        );
-      }
-    }
-    
-    return () => {
-      if (watchIdRef.current !== null) {
-        navigator.geolocation.clearWatch(watchIdRef.current);
-        watchIdRef.current = null;
-      }
-    };
-  }, [scanning, canScan]);
-
-  // Cleanup video stream on unmount
+  // Cleanup scanner on unmount
   useEffect(() => {
     return () => {
-      if (videoRef.current?.srcObject) {
-        const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-        tracks.forEach(track => track.stop());
-      }
+      stopScanner();
     };
   }, []);
 
-  const getCurrentLocation = async () => {
-    setGettingLocation(true);
-    setLocationError(null);
+  const startScanner = async () => {
+    setCameraError(null);
     
     try {
-      if (!navigator.geolocation) {
-        throw new Error('La geolocalización no está soportada');
-      }
+      // Dynamically import html5-qrcode
+      const { Html5Qrcode } = await import('html5-qrcode');
       
-      const position = await new Promise<GeolocationPosition>((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, {
-          enableHighAccuracy: true,
-          timeout: 10000,
-          maximumAge: 0,
-        });
-      });
+      // Create scanner instance
+      scannerRef.current = new Html5Qrcode(scannerContainerId);
       
-      const coords: Coordinates = {
-        latitude: position.coords.latitude,
-        longitude: position.coords.longitude,
-      };
-      setUserLocation(coords);
-      findNearbyRoom(coords);
+      // Start scanning with camera
+      await scannerRef.current.start(
+        { facingMode: 'environment' },
+        {
+          fps: 10,
+          qrbox: { width: 250, height: 250 },
+        },
+        handleScanSuccess,
+        onScanFailure
+      );
+      
+      setScanning(true);
     } catch (error: any) {
-      console.error('Location error:', error);
-      if (error.code === 1) {
-        setLocationError('Permiso de ubicación denegado. Habilita la ubicación en tu navegador.');
-      } else {
-        setLocationError('No se pudo obtener tu ubicación. Intenta de nuevo.');
-      }
-    } finally {
-      setGettingLocation(false);
+      console.error('Error starting scanner:', error);
+      setCameraError('No se pudo acceder a la cámara. Verifica los permisos del navegador.');
+      toast.error('Error al iniciar la cámara');
     }
   };
 
-  const findNearbyRoom = (coords: Coordinates) => {
-    let closestRoom: Room | null = null;
-    let closestDistance = Infinity;
-    
-    for (const room of rooms) {
-      if (room.latitude && room.longitude) {
-        const roomCoords: Coordinates = {
-          latitude: room.latitude,
-          longitude: room.longitude,
-        };
-        
-        // Simple distance calculation using Haversine approximation
-        const distance = calculateDistance(coords, roomCoords);
-        
-        if (distance < closestDistance) {
-          closestDistance = distance;
-          closestRoom = room;
-        }
+  const stopScanner = async () => {
+    if (scannerRef.current && scanning) {
+      try {
+        await scannerRef.current.stop();
+        scannerRef.current = null;
+      } catch (error) {
+        console.error('Error stopping scanner:', error);
       }
-    }
-    
-    setNearbyRoom(closestRoom);
-    setDistanceToRoom(closestDistance);
-  };
-
-  // Haversine formula for distance calculation
-  const calculateDistance = (coord1: Coordinates, coord2: Coordinates): number => {
-    const R = 6371000; // Earth's radius in meters
-    const φ1 = (coord1.latitude * Math.PI) / 180;
-    const φ2 = (coord2.latitude * Math.PI) / 180;
-    const Δφ = ((coord2.latitude - coord1.latitude) * Math.PI) / 180;
-    const Δλ = ((coord2.longitude - coord1.longitude) * Math.PI) / 180;
-
-    const a = Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
-              Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-
-    return R * c;
-  };
-
-  const startScanning = async () => {
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        video: { 
-          facingMode: 'environment',
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        } 
-      });
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        videoRef.current.play();
-        setScanning(true);
-      }
-    } catch (error) {
-      console.error('Error accessing camera:', error);
-      toast.error('No se pudo acceder a la cámara. Verifica los permisos.');
-    }
-  };
-
-  const stopScanning = () => {
-    if (videoRef.current?.srcObject) {
-      const tracks = (videoRef.current.srcObject as MediaStream).getTracks();
-      tracks.forEach(track => track.stop());
-      videoRef.current.srcObject = null;
     }
     setScanning(false);
     setScanResult(null);
     setResultMessage('');
-    setResultData(null);
   };
 
-  const processScan = async (scannedCode: string) => {
+  const handleScanSuccess = async (decodedText: string) => {
+    // Prevent multiple scans while processing
+    if (processing) return;
+    
     setProcessing(true);
-    setScanResult(null);
     
     try {
-      // Parse the QR code to determine type and get target location
-      const parts = scannedCode.split(':');
-      const qrType = parts[0];
-      let targetRoomId = parts[1];
-      
-      // For ACTIVITY QR codes, we need to find the room
-      if (qrType === 'ACTIVITY' && targetRoomId) {
-        // Get activity details to find its room
-        const activityRes = await fetch(`/api/activities?limit=100`);
-        if (activityRes.ok) {
-          const activityData = await activityRes.json();
-          const activities = activityData.data?.activities || activityData.data || [];
-          const activity = activities.find((a: any) => a.id === targetRoomId);
-          
-          if (activity?.room?.id) {
-            targetRoomId = activity.room.id;
-          }
-        }
-      }
-      
-      // Validate location if this is a ROOM or ACTIVITY QR
-      if ((qrType === 'ROOM' || qrType === 'ACTIVITY') && targetRoomId) {
-        const room = rooms.find(r => r.id === targetRoomId);
-        
-        if (room?.latitude && room?.longitude) {
-          const targetCoords: Coordinates = {
-            latitude: room.latitude,
-            longitude: room.longitude,
-          };
-          
-          if (!userLocation) {
-            toast.error('No se pudo obtener tu ubicación. Habilita los permisos de ubicación.');
-            setProcessing(false);
-            return;
-          }
-          
-          const distance = calculateDistance(userLocation, targetCoords);
-          
-          if (distance > MAX_DISTANCE_METERS) {
-            setScanResult('error');
-            setResultMessage(`Debes estar a menos de ${MAX_DISTANCE_METERS} metros de "${room.name}". Actualmente estás a ${formatDistance(distance)}.`);
-            setResultData({ distance, room, userLocation });
-            setProcessing(false);
-            return;
-          }
-        }
-      }
-      
-      // Process the scan
+      // Process the scan via API
       const res = await fetch('/api/qr/scan', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code: scannedCode }),
+        body: JSON.stringify({ code: decodedText }),
       });
       
       const data = await res.json();
       
       if (data.success) {
         setScanResult('success');
-        setResultMessage(data.data?.message || 'Escaneo exitoso');
+        setResultMessage(data.data?.message || '¡Escaneo exitoso!');
         setResultData(data.data);
-        setLastScan(scannedCode);
         
         // Invalidate cache to refresh data
         invalidateCache('/api/activities');
@@ -308,27 +105,39 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
         invalidateCache('/api/achievements');
         invalidateCache('/api/dashboard');
         
-        toast.success(data.data?.message || 'Escaneo exitoso');
+        toast.success(data.data?.message || '¡Escaneo exitoso!');
         
         // Call success callback
         onScanSuccess?.(data.data);
+        
+        // Vibrate on success (mobile)
+        if (navigator.vibrate) {
+          navigator.vibrate(200);
+        }
       } else {
         setScanResult('error');
         setResultMessage(data.error || 'Error al procesar el código QR');
+        toast.error(data.error || 'Error al procesar el código QR');
       }
     } catch (error) {
       console.error('Error processing scan:', error);
       setScanResult('error');
       setResultMessage('Error de conexión. Intenta de nuevo.');
+      toast.error('Error de conexión');
     } finally {
       setProcessing(false);
     }
     
-    // Clear result after 5 seconds
+    // Clear result after 4 seconds
     setTimeout(() => {
       setScanResult(null);
       setResultMessage('');
-    }, 5000);
+      setResultData(null);
+    }, 4000);
+  };
+
+  const onScanFailure = (error: any) => {
+    // Ignore scan failures (normal when no QR is in view)
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -338,15 +147,12 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
     setProcessing(true);
     
     try {
-      // Use a QR code library to read from image
-      // For now, we'll use a simple approach with html5-qrcode
-      const Html5Qrcode = (await import('html5-qrcode')).Html5Qrcode;
-      
+      const { Html5Qrcode } = await import('html5-qrcode');
       const html5QrCode = new Html5Qrcode('qr-reader-hidden');
       
       try {
         const decodedText = await html5QrCode.scanFile(file, true);
-        await processScan(decodedText);
+        await handleScanSuccess(decodedText);
       } catch (scanError) {
         toast.error('No se pudo leer el código QR de la imagen');
       } finally {
@@ -390,66 +196,6 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
         </Card>
       ) : (
         <>
-          {/* Location Status */}
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center gap-2">
-                <Navigation className="w-5 h-5" />
-                Estado de Ubicación
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              {gettingLocation ? (
-                <div className="flex items-center gap-2 text-gray-500">
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Obteniendo ubicación...
-                </div>
-              ) : locationError ? (
-                <Alert variant="destructive">
-                  <AlertTriangle className="w-4 h-4" />
-                  <AlertTitle>Error de ubicación</AlertTitle>
-                  <AlertDescription>{locationError}</AlertDescription>
-                </Alert>
-              ) : userLocation ? (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-green-600">
-                    <MapPin className="w-4 h-4" />
-                    <span>Ubicación obtenida</span>
-                  </div>
-                  {nearbyRoom && (
-                    <div className="text-sm text-gray-600">
-                      <p>Sala más cercana: <strong>{nearbyRoom.name}</strong></p>
-                      {distanceToRoom !== null && (
-                        <p className={distanceToRoom <= MAX_DISTANCE_METERS ? 'text-green-600' : 'text-orange-500'}>
-                          Distancia: {formatDistance(distanceToRoom)}
-                          {distanceToRoom > MAX_DISTANCE_METERS && ` (debes estar a menos de ${MAX_DISTANCE_METERS}m)`}
-                        </p>
-                      )}
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-gray-500">
-                  Habilita la ubicación para validar distancia a las salas
-                </div>
-              )}
-              <Button 
-                variant="outline" 
-                size="sm" 
-                className="mt-2"
-                onClick={getCurrentLocation}
-                disabled={gettingLocation}
-              >
-                {gettingLocation ? (
-                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <Navigation className="w-4 h-4 mr-2" />
-                )}
-                Actualizar ubicación
-              </Button>
-            </CardContent>
-          </Card>
-
           {/* Scanner Card */}
           <Card>
             <CardHeader>
@@ -462,38 +208,42 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="relative aspect-video bg-gray-900 rounded-lg overflow-hidden flex items-center justify-center">
-                {scanning ? (
-                  <>
-                    <video
-                      ref={videoRef}
-                      className="w-full h-full object-cover"
-                      playsInline
-                    />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <div className="w-48 h-48 border-4 border-emerald-500 rounded-lg animate-pulse" />
-                    </div>
-                    {processing && (
-                      <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                        <Loader2 className="w-8 h-8 animate-spin text-white" />
-                      </div>
-                    )}
-                  </>
-                ) : (
-                  <div className="text-center text-gray-400">
-                    <Camera className="w-12 h-12 mx-auto mb-2" />
-                    <p>Cámara desactivada</p>
+              <div 
+                id={scannerContainerId}
+                className="relative bg-gray-900 rounded-lg overflow-hidden"
+                style={{ minHeight: scanning ? '300px' : '200px' }}
+              >
+                {!scanning && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 p-4">
+                    <Camera className="w-12 h-12 mb-2" />
+                    <p className="text-center">Presiona "Iniciar Cámara" para escanear</p>
                   </div>
                 )}
               </div>
+              
+              {cameraError && (
+                <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+                  {cameraError}
+                </div>
+              )}
+              
               <div className="flex gap-2 mt-4">
                 {scanning ? (
-                  <Button variant="outline" className="flex-1" onClick={stopScanning}>
-                    Detener Escaneo
+                  <Button 
+                    variant="outline" 
+                    className="flex-1" 
+                    onClick={stopScanner}
+                    disabled={processing}
+                  >
+                    Detener Cámara
                   </Button>
                 ) : (
                   <>
-                    <Button className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600" onClick={startScanning}>
+                    <Button 
+                      className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600" 
+                      onClick={startScanner}
+                      disabled={processing}
+                    >
                       <Camera className="w-4 h-4 mr-2" />
                       Iniciar Cámara
                     </Button>
@@ -508,8 +258,9 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
                       variant="outline" 
                       onClick={() => fileInputRef.current?.click()}
                       disabled={processing}
+                      title="Subir imagen con QR"
                     >
-                      <Upload className="w-4 h-4" />
+                      {processing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Upload className="w-4 h-4" />}
                     </Button>
                   </>
                 )}
@@ -525,7 +276,7 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
               >
-                <Card className={`border-2 ${scanResult === 'success' ? 'border-green-500' : 'border-red-500'}`}>
+                <Card className={`border-2 ${scanResult === 'success' ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`}>
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
                       {scanResult === 'success' ? (
@@ -534,12 +285,12 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
                         <XCircle className="w-8 h-8 text-red-500 flex-shrink-0" />
                       )}
                       <div>
-                        <p className="font-semibold">
-                          {scanResult === 'success' ? '¡Escaneo Exitoso!' : 'Error de Escaneo'}
+                        <p className="font-semibold text-lg">
+                          {scanResult === 'success' ? '¡Escaneo Exitoso!' : 'Error'}
                         </p>
                         <p className="text-sm text-gray-600">{resultMessage}</p>
-                        {resultData?.pointsEarned && (
-                          <Badge variant="secondary" className="mt-2">
+                        {resultData?.pointsEarned && resultData.pointsEarned > 0 && (
+                          <Badge className="mt-2 bg-emerald-500">
                             +{resultData.pointsEarned} puntos
                           </Badge>
                         )}
@@ -551,17 +302,18 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
             )}
           </AnimatePresence>
 
-          {/* Instructions */}
+          {/* Instructions - Simplified */}
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Instrucciones</CardTitle>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-lg">Cómo usar</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-2 text-sm text-gray-600 dark:text-gray-400">
-              <p>1. Habilita la ubicación en tu dispositivo</p>
-              <p>2. Haz clic en "Iniciar Cámara" para activar el escáner</p>
-              <p>3. Acércate a la sala (menos de {MAX_DISTANCE_METERS} metros)</p>
-              <p>4. Apunta la cámara hacia un código QR válido</p>
-              <p>5. El sistema validará tu ubicación y registrará tu asistencia</p>
+            <CardContent className="space-y-2 text-sm text-gray-600">
+              <p>1. Presiona <strong>"Iniciar Cámara"</strong></p>
+              <p>2. Apunta al código QR</p>
+              <p>3. El escaneo es automático</p>
+              <p className="text-gray-400 text-xs mt-2">
+                También puedes subir una imagen con un código QR
+              </p>
             </CardContent>
           </Card>
         </>
@@ -569,6 +321,3 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
     </motion.div>
   );
 }
-
-// Import Upload icon
-import { Upload } from 'lucide-react';
