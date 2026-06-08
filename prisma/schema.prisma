@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,7 +7,493 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// ==================== USERS & AUTH ====================
+model User {
+  id                   String                 @id @default(cuid())
+  email                String                 @unique
+  password             String
+  name                 String
+  avatar               String?
+  role                 UserRole               @default("PARTICIPANT")
+  points               Int                    @default(0)
+  level                Int                    @default(1)
+  bio                  String?
+  phone                String?
+  country              String?
+  language             String                 @default("es")
+  isActive             Boolean                @default(true)
+  acceptedTerms        Boolean                @default(false)
+  acceptedTermsAt      DateTime?
+  lastLogin            DateTime?
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+  registrations        ActivityRegistration[]
+  attendances          Attendance[]
+  certificates         Certificate[]
+  evaluations          Evaluation[]
+  evaluatorAssignments EvaluatorAssignment[]
+  createdEvents        Event[]                @relation("EventCreator")
+  notifications        Notification[]
+  passwordResets       PasswordReset[]
+  qrCodes              QRCode[]
+  qrScans              QRScan[]
+  sessions             Session[]
+  achievements         UserAchievement[]
+  votes                Vote[]
+
+  @@map("users")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Event {
+  id                  String               @id @default(cuid())
+  name                String
+  slug                String               @unique
+  description         String?
+  logo                String?
+  image               String?
+  startDate           DateTime
+  endDate             DateTime
+  location            String?
+  address             String?
+  latitude            Float?
+  longitude           Float?
+  website             String?
+  isActive            Boolean              @default(true)
+  votingEnabled       Boolean              @default(true)
+  qrEnabled           Boolean              @default(true)
+  mapsEnabled         Boolean              @default(true)
+  gamificationEnabled Boolean              @default(true)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+  creatorId           String
+  activities          Activity[]
+  creator             User                 @relation("EventCreator", fields: [creatorId], references: [id])
+  notificationConfigs NotificationConfig[]
+  notifications       Notification[]
+  projects            Project[]
+  rooms               Room[]
+  speakers            Speaker[]
+  votingConfigs       VotingConfig[]
+
+  @@map("events")
+}
+
+model Room {
+  id          String     @id @default(cuid())
+  eventId     String
+  name        String
+  description String?
+  capacity    Int        @default(100)
+  building    String?
+  floor       String?
+  latitude    Float?
+  longitude   Float?
+  color       String?    @default("#3B82F6")
+  icon        String?    @default("map-pin")
+  isActive    Boolean    @default(true)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  activities  Activity[]
+  projects    Project[]
+  qrCodes     QRCode[]
+  event       Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@unique([eventId, name])
+  @@map("rooms")
+}
+
+model Speaker {
+  id         String     @id @default(cuid())
+  eventId    String
+  name       String
+  photo      String?
+  bio        String?
+  title      String?
+  company    String?
+  email      String?
+  twitter    String?
+  linkedin   String?
+  website    String?
+  isActive   Boolean    @default(true)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  activities Activity[]
+  event      Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("speakers")
+}
+
+model Activity {
+  id                String                 @id @default(cuid())
+  eventId           String
+  roomId            String
+  speakerId         String?
+  title             String
+  description       String?
+  type              ActivityType           @default("PRESENTATION")
+  status            ActivityStatus         @default("SCHEDULED")
+  theme             String?
+  tags              String?
+  startTime         DateTime
+  endTime           DateTime
+  maxCapacity       Int?
+  currentAttendance Int                    @default(0)
+  color             String?                @default("#10B981")
+  isActive          Boolean                @default(true)
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  expositorName     String?
+  speaker           Speaker?               @relation(fields: [speakerId], references: [id])
+  room              Room                   @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  event             Event                  @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  registrations     ActivityRegistration[]
+  attendances       Attendance[]
+  qrCodes           QRCode[]
+
+  @@map("activities")
+}
+
+model Project {
+  id                   String                @id @default(cuid())
+  eventId              String
+  roomId               String?
+  name                 String
+  team                 String
+  category             String?
+  description          String?
+  image                String?
+  videoUrl             String?
+  githubUrl            String?
+  websiteUrl           String?
+  status               ProjectStatus         @default("DRAFT")
+  totalVotes           Int                   @default(0)
+  averageScore         Float?
+  averageEvaluation    Float?                @default(0)
+  evaluationCount      Int                   @default(0)
+  rank                 Int?
+  isActive             Boolean               @default(true)
+  createdAt            DateTime              @default(now())
+  updatedAt            DateTime              @updatedAt
+  area                 String?
+  course               String?
+  institution          String?
+  leaderEmail          String?
+  leaderName           String?
+  leaderPhone          String?
+  projectCategory      String?
+  tutorName            String?
+  evaluations          Evaluation[]
+  evaluatorAssignments EvaluatorAssignment[]
+  room                 Room?                 @relation(fields: [roomId], references: [id])
+  event                Event                 @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  qrCodes              QRCode[]
+  votes                Vote[]
+
+  @@map("projects")
+}
+
+model VotingConfig {
+  id              String   @id @default(cuid())
+  eventId         String
+  name            String
+  voteType        VoteType @default("STARS")
+  maxVotesPerUser Int      @default(3)
+  startDate       DateTime
+  endDate         DateTime
+  isActive        Boolean  @default(true)
+  showResults     Boolean  @default(false)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  event           Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("voting_configs")
+}
+
+model Vote {
+  id        String   @id @default(cuid())
+  userId    String
+  projectId String
+  score     Int      @default(1)
+  comment   String?
+  createdAt DateTime @default(now())
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@map("votes")
+}
+
+model Evaluation {
+  id                  String    @id @default(cuid())
+  userId              String
+  projectId           String
+  innovation          Int       @default(0)
+  innovationComment   String?
+  viability           Int       @default(0)
+  viabilityComment    String?
+  impact              Int       @default(0)
+  impactComment       String?
+  presentation        Int       @default(0)
+  presentationComment String?
+  scalability         Int       @default(0)
+  scalabilityComment  String?
+  execution           Int       @default(0)
+  executionComment    String?
+  totalScore          Float     @default(0)
+  generalComment      String?
+  status              String    @default("DRAFT")
+  submittedAt         DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+  project             Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user                User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@map("evaluations")
+}
+
+model Attendance {
+  id           String    @id @default(cuid())
+  userId       String
+  activityId   String
+  checkInTime  DateTime  @default(now())
+  checkOutTime DateTime?
+  points       Int       @default(0)
+  notes        String?
+  createdAt    DateTime  @default(now())
+  activity     Activity  @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user         User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, activityId])
+  @@map("attendances")
+}
+
+model ActivityRegistration {
+  id              String   @id @default(cuid())
+  userId          String
+  activityId      String
+  reminderSet     Boolean  @default(false)
+  reminderMinutes Int?
+  registeredAt    DateTime @default(now())
+  createdAt       DateTime @default(now())
+  activity        Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, activityId])
+  @@map("activity_registrations")
+}
+
+model QRCode {
+  id         String    @id @default(cuid())
+  code       String    @unique
+  type       QRType
+  userId     String?
+  roomId     String?
+  activityId String?
+  projectId  String?
+  eventId    String?
+  isActive   Boolean   @default(true)
+  expiresAt  DateTime?
+  scanCount  Int       @default(0)
+  createdAt  DateTime  @default(now())
+  project    Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  activity   Activity? @relation(fields: [activityId], references: [id], onDelete: Cascade)
+  room       Room?     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  user       User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("qr_codes")
+}
+
+model QRScan {
+  id        String   @id @default(cuid())
+  code      String
+  userId    String
+  scannedAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([code, userId])
+  @@map("qr_scans")
+}
+
+model NotificationConfig {
+  id                      String   @id @default(cuid())
+  eventId                 String
+  activityStartEnabled    Boolean  @default(true)
+  activityReminderEnabled Boolean  @default(true)
+  activityReminderMinutes Int      @default(15)
+  voteConfirmationEnabled Boolean  @default(true)
+  voteReminderEnabled     Boolean  @default(true)
+  pointsEarnedEnabled     Boolean  @default(true)
+  achievementEnabled      Boolean  @default(true)
+  certificateReadyEnabled Boolean  @default(true)
+  announcementsEnabled    Boolean  @default(true)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+  event                   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@map("notification_configs")
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String?
+  eventId   String?
+  title     String
+  message   String
+  type      NotificationType @default("INFO")
+  isRead    Boolean          @default(false)
+  isGlobal  Boolean          @default(false)
+  actionUrl String?
+  createdAt DateTime         @default(now())
+  event     Event?           @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user      User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+model Achievement {
+  id               String            @id @default(cuid())
+  name             String
+  description      String
+  icon             String?
+  points           Int               @default(0)
+  category         String?
+  requirement      String?
+  isActive         Boolean           @default(true)
+  createdAt        DateTime          @default(now())
+  userAchievements UserAchievement[]
+
+  @@map("achievements")
+}
+
+model UserAchievement {
+  id            String      @id @default(cuid())
+  userId        String
+  achievementId String
+  earnedAt      DateTime    @default(now())
+  achievement   Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+  user          User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+model Certificate {
+  id          String   @id @default(cuid())
+  userId      String
+  eventId     String?
+  activityId  String?
+  type        String
+  title       String
+  description String?
+  issueDate   DateTime @default(now())
+  pdfUrl      String?
+  code        String   @unique
+  createdAt   DateTime @default(now())
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("certificates")
+}
+
+model CertificateTemplate {
+  id                String   @id @default(cuid())
+  eventId           String?
+  name              String
+  type              String   @default("attendance")
+  headerText        String?  @default("CERTIFICADO DE PARTICIPACIÓN")
+  logoUrl           String?
+  bodyText          String?  @default("Se certifica que")
+  participantLabel  String?  @default("ha participado en")
+  eventLabel        String?  @default("evento")
+  organizationName  String?  @default("Fábrica de Ideas")
+  organizationLogo  String?
+  signatureText     String?
+  signatureImageUrl String?
+  backgroundColor   String?  @default("#ffffff")
+  primaryColor      String?  @default("#059669")
+  secondaryColor    String?  @default("#0d9488")
+  textColor         String?  @default("#1f2937")
+  fontFamily        String?  @default("Helvetica")
+  borderColor       String?  @default("#059669")
+  borderWidth       Int?     @default(4)
+  borderRadius      Int?     @default(0)
+  paperWidth        Int?     @default(297)
+  paperHeight       Int?     @default(210)
+  showQrCode        Boolean  @default(true)
+  showCode          Boolean  @default(true)
+  showDate          Boolean  @default(true)
+  showActivities    Boolean  @default(true)
+  isActive          Boolean  @default(true)
+  isDefault         Boolean  @default(false)
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@map("certificate_templates")
+}
+
+model AnalyticsEvent {
+  id         String   @id @default(cuid())
+  eventType  String
+  userId     String?
+  eventId    String?
+  entityId   String?
+  entityType String?
+  metadata   String?
+  ipAddress  String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@map("analytics_events")
+}
+
+model AppConfig {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("app_config")
+}
+
+model EvaluatorAssignment {
+  id          String    @id @default(cuid())
+  evaluatorId String
+  projectId   String
+  assignedBy  String
+  status      String    @default("PENDING")
+  dueDate     DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  evaluator   User      @relation(fields: [evaluatorId], references: [id], onDelete: Cascade)
+
+  @@unique([evaluatorId, projectId])
+  @@map("evaluator_assignments")
+}
+
+model PasswordReset {
+  id        String    @id @default(cuid())
+  userId    String
+  token     String    @unique
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime  @default(now())
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("password_resets")
+}
 
 enum UserRole {
   ADMIN
@@ -19,149 +502,6 @@ enum UserRole {
   EVALUATOR
   PARTICIPANT
 }
-
-model User {
-  id            String   @id @default(cuid())
-  email         String   @unique
-  password      String
-  name          String
-  avatar        String?
-  role          UserRole @default(PARTICIPANT)
-  points        Int      @default(0)
-  level         Int      @default(1)
-  bio           String?
-  phone         String?
-  country       String?
-  language      String   @default("es")
-  isActive      Boolean  @default(true)
-  acceptedTerms Boolean  @default(false)  // Aceptación de términos y condiciones
-  acceptedTermsAt DateTime?              // Fecha de aceptación de términos
-  lastLogin     DateTime?
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  // Relations
-  attendances   Attendance[]
-  votes         Vote[]
-  evaluations   Evaluation[]
-  notifications Notification[]
-  achievements  UserAchievement[]
-  qrCodes       QRCode[]
-  qrScans       QRScan[]
-  certificates  Certificate[]
-  createdEvents Event[]         @relation("EventCreator")
-  sessions      Session[]
-  registrations ActivityRegistration[]
-  evaluatorAssignments EvaluatorAssignment[]
-  passwordResets PasswordReset[]
-
-  @@map("users")
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  userId       String
-  token        String   @unique
-  expiresAt    DateTime
-  createdAt    DateTime @default(now())
-  
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@map("sessions")
-}
-
-// ==================== EVENTS ====================
-
-model Event {
-  id              String   @id @default(cuid())
-  name            String
-  slug            String   @unique
-  description     String?
-  logo            String?
-  image           String?
-  startDate       DateTime
-  endDate         DateTime
-  location        String?
-  address         String?
-  latitude        Float?
-  longitude       Float?
-  website         String?
-  isActive        Boolean  @default(true)
-  votingEnabled   Boolean  @default(true)
-  qrEnabled       Boolean  @default(true)
-  mapsEnabled     Boolean  @default(true)
-  gamificationEnabled Boolean @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  // Relations
-  creatorId       String
-  creator         User     @relation("EventCreator", fields: [creatorId], references: [id])
-  rooms           Room[]
-  activities      Activity[]
-  projects        Project[]
-  speakers        Speaker[]
-  votingConfigs   VotingConfig[]
-  notifications   Notification[]
-  notificationConfigs NotificationConfig[]
-  
-  @@map("events")
-}
-
-// ==================== ROOMS ====================
-
-model Room {
-  id          String   @id @default(cuid())
-  eventId     String
-  name        String
-  description String?
-  capacity    Int      @default(100)
-  building    String?
-  floor       String?
-  latitude    Float?
-  longitude   Float?
-  color       String?  @default("#3B82F6")
-  icon        String?  @default("map-pin")
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // Relations
-  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  activities  Activity[]
-  projects    Project[]
-  qrCodes     QRCode[]
-  
-  @@unique([eventId, name])
-  @@map("rooms")
-}
-
-// ==================== SPEAKERS ====================
-
-model Speaker {
-  id          String   @id @default(cuid())
-  eventId     String
-  name        String
-  photo       String?
-  bio         String?
-  title       String?
-  company     String?
-  email       String?
-  twitter     String?
-  linkedin    String?
-  website     String?
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // Relations
-  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  activities  Activity[]
-  
-  @@map("speakers")
-}
-
-// ==================== ACTIVITIES ====================
 
 enum ActivityStatus {
   SCHEDULED
@@ -191,40 +531,6 @@ enum ActivityType {
   OTHER
 }
 
-model Activity {
-  id          String         @id @default(cuid())
-  eventId     String
-  roomId      String
-  speakerId   String?
-  expositorName String?       // Nombre del expositor (además del speakerId)
-  title       String
-  description String?
-  type        ActivityType   @default(PRESENTATION)
-  status      ActivityStatus @default(SCHEDULED)
-  theme       String?
-  tags        String?        // JSON array of tags
-  startTime   DateTime
-  endTime     DateTime
-  maxCapacity Int?
-  currentAttendance Int @default(0)
-  color       String?  @default("#10B981")
-  isActive    Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  // Relations
-  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  room        Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  speaker     Speaker? @relation(fields: [speakerId], references: [id], onDelete: SetNull)
-  attendances Attendance[]
-  qrCodes     QRCode[]
-  registrations ActivityRegistration[]
-
-  @@map("activities")
-}
-
-// ==================== PROJECTS ====================
-
 enum ProjectStatus {
   DRAFT
   SUBMITTED
@@ -234,178 +540,11 @@ enum ProjectStatus {
   WINNER
 }
 
-model Project {
-  id           String        @id @default(cuid())
-  eventId      String
-  roomId       String?
-  name         String
-  team         String        // JSON array of team members
-  category     String?
-  description  String?
-  image        String?
-  videoUrl     String?
-  githubUrl    String?
-  websiteUrl   String?
-  
-  // Additional project details for Fábrica de Ideas
-  leaderName     String?
-  leaderEmail    String?
-  leaderPhone    String?
-  institution    String?
-  course         String?
-  tutorName      String?
-  area           String?      // Área de participación
-  projectCategory String?    // Categoría del proyecto (Emprendimiento Escolar, Idea de negocio, etc.)
-  
-  status       ProjectStatus @default(DRAFT)
-  totalVotes   Int           @default(0)
-  averageScore Float?
-  averageEvaluation Float?   @default(0) // Promedio de evaluaciones de jurado
-  evaluationCount  Int       @default(0) // Número de evaluaciones recibidas
-  rank         Int?
-  isActive     Boolean       @default(true)
-  createdAt    DateTime      @default(now())
-  updatedAt    DateTime      @updatedAt
-  
-  // Relations
-  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  room         Room?    @relation(fields: [roomId], references: [id], onDelete: SetNull)
-  votes        Vote[]
-  evaluations  Evaluation[]
-  qrCodes      QRCode[]
-  evaluatorAssignments EvaluatorAssignment[]
-  
-  @@map("projects")
-}
-
-// ==================== VOTING ====================
-
 enum VoteType {
   LIKE
   STARS
   POINTS
 }
-
-model VotingConfig {
-  id            String    @id @default(cuid())
-  eventId       String
-  name          String
-  voteType      VoteType  @default(STARS)
-  maxVotesPerUser Int     @default(3)
-  startDate     DateTime
-  endDate       DateTime
-  isActive      Boolean   @default(true)
-  showResults   Boolean   @default(false)
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  
-  // Relations
-  event         Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  
-  @@map("voting_configs")
-}
-
-model Vote {
-  id          String   @id @default(cuid())
-  userId      String
-  projectId   String
-  score       Int      @default(1)  // 1 for like, 1-5 for stars, 1-10 for points
-  comment     String?
-  createdAt   DateTime @default(now())
-  
-  // Relations
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  @@unique([userId, projectId])
-  @@map("votes")
-}
-
-// ==================== EVALUATIONS ====================
-
-model Evaluation {
-  id                    String   @id @default(cuid())
-  userId                String
-  projectId             String
-  
-  // Criterios de evaluación para proyectos de emprendimiento e innovación
-  // Con sus porcentajes de peso actualizados
-  innovation            Int      @default(0)    // Innovación y Creatividad (20%)
-  innovationComment     String?
-  
-  viability             Int      @default(0)    // Viabilidad del Negocio (15%)
-  viabilityComment      String?
-  
-  impact                Int      @default(0)    // Impacto Social/Ambiental (15%)
-  impactComment         String?
-  
-  presentation          Int      @default(0)    // Pitch/Presentación y Comunicación (20%)
-  presentationComment   String?
-  
-  scalability           Int      @default(0)    // Potencial de Escalamiento (10%)
-  scalabilityComment    String?
-  
-  execution             Int      @default(0)    // Equipo y Ejecución (20%)
-  executionComment      String?
-  
-  // Campos calculados
-  totalScore            Float    @default(0)    // Puntaje total ponderado
-  generalComment        String?                 // Comentario general del evaluador
-  
-  status                String   @default("DRAFT") // DRAFT, SUBMITTED
-  submittedAt           DateTime?
-  
-  createdAt             DateTime @default(now())
-  updatedAt             DateTime @updatedAt
-  
-  // Relations
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  @@unique([userId, projectId])
-  @@map("evaluations")
-}
-
-// ==================== ATTENDANCE ====================
-
-model Attendance {
-  id          String   @id @default(cuid())
-  userId      String
-  activityId  String
-  checkInTime DateTime @default(now())
-  checkOutTime DateTime?
-  points      Int      @default(0)
-  notes       String?
-  createdAt   DateTime @default(now())
-  
-  // Relations
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  activity    Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  
-  @@unique([userId, activityId])
-  @@map("attendances")
-}
-
-// ==================== ACTIVITY REGISTRATIONS ====================
-
-model ActivityRegistration {
-  id              String    @id @default(cuid())
-  userId          String
-  activityId      String
-  reminderSet     Boolean   @default(false)
-  reminderMinutes Int?
-  registeredAt    DateTime  @default(now())
-  createdAt       DateTime  @default(now())
-
-  // Relations
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  activity    Activity @relation(fields: [activityId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, activityId])
-  @@map("activity_registrations")
-}
-
-// ==================== QR CODES ====================
 
 enum QRType {
   ROOM
@@ -414,44 +553,6 @@ enum QRType {
   USER
   EVENT
 }
-
-model QRCode {
-  id          String   @id @default(cuid())
-  code        String   @unique
-  type        QRType
-  userId      String?
-  roomId      String?
-  activityId  String?
-  projectId   String?
-  eventId     String?
-  isActive    Boolean  @default(true)
-  expiresAt   DateTime?
-  scanCount   Int      @default(0)
-  createdAt   DateTime @default(now())
-  
-  // Relations
-  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
-  room        Room?    @relation(fields: [roomId], references: [id], onDelete: Cascade)
-  activity    Activity? @relation(fields: [activityId], references: [id], onDelete: Cascade)
-  project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  @@map("qr_codes")
-}
-
-// Registro simple de escaneos por usuario
-model QRScan {
-  id          String   @id @default(cuid())
-  code        String   // El código QR escaneado
-  userId      String
-  scannedAt   DateTime @default(now())
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@unique([code, userId]) // Un usuario solo puede escanear un código una vez
-  @@map("qr_scans")
-}
-
-// ==================== NOTIFICATIONS ====================
 
 enum NotificationType {
   INFO
@@ -465,225 +566,4 @@ enum NotificationType {
   ANNOUNCEMENT
   POINTS_EARNED
   CERTIFICATE_READY
-}
-
-model NotificationConfig {
-  id                      String   @id @default(cuid())
-  eventId                 String
-  
-  // Activity notifications
-  activityStartEnabled    Boolean  @default(true)
-  activityReminderEnabled Boolean  @default(true)
-  activityReminderMinutes Int      @default(15)
-  
-  // Vote notifications
-  voteConfirmationEnabled Boolean  @default(true)
-  voteReminderEnabled     Boolean  @default(true)
-  
-  // Gamification notifications
-  pointsEarnedEnabled     Boolean  @default(true)
-  achievementEnabled      Boolean  @default(true)
-  
-  // Certificate notifications
-  certificateReadyEnabled Boolean  @default(true)
-  
-  // Global announcements
-  announcementsEnabled    Boolean  @default(true)
-  
-  createdAt               DateTime @default(now())
-  updatedAt               DateTime @updatedAt
-  
-  // Relations
-  event                   Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  
-  @@map("notification_configs")
-}
-
-model Notification {
-  id          String           @id @default(cuid())
-  userId      String?
-  eventId     String?
-  title       String
-  message     String
-  type        NotificationType @default(INFO)
-  isRead      Boolean          @default(false)
-  isGlobal    Boolean          @default(false)
-  actionUrl   String?
-  createdAt   DateTime         @default(now())
-  
-  // Relations
-  user        User?            @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event       Event?           @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  
-  @@map("notifications")
-}
-
-// ==================== GAMIFICATION ====================
-
-model Achievement {
-  id          String   @id @default(cuid())
-  name        String
-  description String
-  icon       String?
-  points     Int      @default(0)
-  category   String?
-  requirement String?
-  isActive   Boolean  @default(true)
-  createdAt  DateTime @default(now())
-  
-  userAchievements UserAchievement[]
-  
-  @@map("achievements")
-}
-
-model UserAchievement {
-  id            String   @id @default(cuid())
-  userId        String
-  achievementId String
-  earnedAt      DateTime @default(now())
-  
-  user          User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  achievement   Achievement  @relation(fields: [achievementId], references: [id], onDelete: Cascade)
-  
-  @@unique([userId, achievementId])
-  @@map("user_achievements")
-}
-
-// ==================== CERTIFICATES ====================
-
-model Certificate {
-  id          String   @id @default(cuid())
-  userId      String
-  eventId     String?
-  activityId  String?  // Activity for which the certificate was issued
-  type        String   // attendance, speaker, organizer, winner
-  title       String
-  description String?
-  issueDate   DateTime @default(now())
-  pdfUrl      String?
-  code        String   @unique
-  createdAt   DateTime @default(now())
-  
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@map("certificates")
-}
-
-model CertificateTemplate {
-  id              String   @id @default(cuid())
-  eventId         String?  // null for default template
-  name            String
-  type            String   @default("attendance") // attendance, speaker, winner, etc.
-  
-  // Header settings
-  headerText      String?  @default("CERTIFICADO DE PARTICIPACIÓN")
-  logoUrl         String?
-  
-  // Body settings  
-  bodyText        String?  @default("Se certifica que")
-  participantLabel String? @default("ha participado en")
-  eventLabel      String?  @default("evento")
-  
-  // Footer settings
-  organizationName String? @default("Fábrica de Ideas")
-  organizationLogo String?
-  signatureText   String?
-  signatureImageUrl String?
-  
-  // Style settings
-  backgroundColor String? @default("#ffffff")
-  primaryColor    String? @default("#059669")  // emerald-600
-  secondaryColor  String? @default("#0d9488")  // teal-600
-  textColor       String? @default("#1f2937")  // gray-800
-  fontFamily      String? @default("Helvetica")
-  
-  // Border settings
-  borderColor     String? @default("#059669")
-  borderWidth     Int?    @default(4)
-  borderRadius    Int?    @default(0)
-  
-  // Paper settings
-  paperWidth      Int?    @default(297)  // A4 landscape width in mm
-  paperHeight     Int?    @default(210)  // A4 landscape height in mm
-  
-  // Content layout
-  showQrCode      Boolean @default(true)
-  showCode        Boolean @default(true)
-  showDate        Boolean @default(true)
-  showActivities  Boolean @default(true)  // Show list of attended activities
-  
-  // Status
-  isActive        Boolean @default(true)
-  isDefault       Boolean @default(false) // Mark as default template for type
-  
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-  
-  @@map("certificate_templates")
-}
-
-// ==================== ANALYTICS ====================
-
-model AnalyticsEvent {
-  id          String   @id @default(cuid())
-  eventType   String   // page_view, qr_scan, vote, attendance, etc.
-  userId      String?
-  eventId     String?
-  entityId    String?
-  entityType  String?
-  metadata    String?  // JSON
-  ipAddress   String?
-  userAgent   String?
-  createdAt   DateTime @default(now())
-  
-  @@map("analytics_events")
-}
-
-// ==================== APP CONFIGURATION ====================
-
-model AppConfig {
-  id          String   @id @default(cuid())
-  key         String   @unique   // Clave única de configuración
-  value       String             // Valor de la configuración (JSON para valores complejos)
-  description String?            // Descripción de la configuración
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  @@map("app_config")
-}
-
-// ==================== EVALUATOR ASSIGNMENTS ====================
-
-model EvaluatorAssignment {
-  id          String   @id @default(cuid())
-  evaluatorId String             // ID del usuario evaluador
-  projectId   String             // ID del proyecto asignado
-  assignedBy  String             // ID del admin que asignó
-  status      String   @default("PENDING") // PENDING, IN_PROGRESS, COMPLETED
-  dueDate     DateTime?          // Fecha límite para evaluar
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  // Relations
-  evaluator   User    @relation(fields: [evaluatorId], references: [id], onDelete: Cascade)
-  project     Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
-  
-  @@unique([evaluatorId, projectId])
-  @@map("evaluator_assignments")
-}
-
-// ==================== PASSWORD RESET ====================
-
-model PasswordReset {
-  id        String   @id @default(cuid())
-  userId    String
-  token     String   @unique   // Token único para restablecer contraseña
-  expiresAt DateTime            // Fecha de expiración del token (1 hora)
-  usedAt    DateTime?           // Fecha en que se usó el token
-  createdAt DateTime @default(now())
-  
-  // Relations
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  
-  @@map("password_resets")
 }

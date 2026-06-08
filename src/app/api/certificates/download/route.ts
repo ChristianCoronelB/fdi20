@@ -8,16 +8,19 @@ function getQrCodeUrl(code: string): string {
   return `https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${encodeURIComponent(`CERT:${code}`)}`;
 }
 
-// Helper function to wrap text
-function wrapText(text: string, maxWidth: number): string[] {
+// Helper function to wrap text based on actual PDF text width
+// When jsPDF is created with unit: 'mm', getTextWidth() returns width in millimeters
+function wrapText(pdf: jsPDF, text: string, maxWidthMm: number): string[] {
   const words = text.split(' ');
   const lines: string[] = [];
   let currentLine = '';
 
   for (const word of words) {
     const testLine = currentLine ? `${currentLine} ${word}` : word;
-    if (testLine.length * 2.5 > maxWidth) { // Approximate character width
-      if (currentLine) lines.push(currentLine);
+    const testWidthMm = pdf.getTextWidth(testLine); // Returns mm when unit is 'mm'
+    
+    if (testWidthMm > maxWidthMm && currentLine) {
+      lines.push(currentLine);
       currentLine = word;
     } else {
       currentLine = testLine;
@@ -25,6 +28,24 @@ function wrapText(text: string, maxWidth: number): string[] {
   }
   if (currentLine) lines.push(currentLine);
   return lines;
+}
+
+// Helper function to draw centered wrapped text
+function drawCenteredWrappedText(
+  pdf: jsPDF, 
+  text: string, 
+  maxWidth: number, 
+  startY: number, 
+  lineHeight: number
+): number {
+  const lines = wrapText(pdf, text, maxWidth);
+  const centerX = 297 / 2;
+  
+  lines.forEach((line, index) => {
+    pdf.text(line, centerX, startY + (index * lineHeight), { align: 'center' });
+  });
+  
+  return startY + (lines.length * lineHeight);
 }
 
 export async function GET(request: NextRequest) {
@@ -108,7 +129,6 @@ export async function GET(request: NextRequest) {
     const activities = activitiesResult as any[];
 
     // Get certificate template (default or event-specific)
-    // Use Prisma's findFirst for better reliability
     const template = await db.certificateTemplate.findFirst({
       where: {
         isActive: true,
@@ -132,7 +152,8 @@ export async function GET(request: NextRequest) {
 
     const pageWidth = 297;
     const pageHeight = 210;
-    const margin = 20;
+    const margin = 25;
+    const contentWidth = pageWidth - (margin * 2);
 
     // Get colors from template or use defaults
     const primaryColor = template?.primaryColor || '#059669';
@@ -187,72 +208,81 @@ export async function GET(request: NextRequest) {
     pdf.line(pageWidth - 12 - cornerSize, pageHeight - 12, pageWidth - 12, pageHeight - 12);
     pdf.line(pageWidth - 12, pageHeight - 12 - cornerSize, pageWidth - 12, pageHeight - 12);
 
+    // Track current Y position
+    let currentY = 35;
+
     // Header
-    pdf.setTextColor(primaryRgb.r, primaryRgb.g, primaryRgb.b);
-    pdf.setFontSize(32);
-    pdf.setFont('helvetica', 'bold');
-    
-    const headerText = template?.headerText || 'CERTIFICADO DE PARTICIPACIÓN';
-    pdf.text(headerText, pageWidth / 2, 35, { align: 'center' });
-
-    // Decorative line under header
-    pdf.setDrawColor(primaryRgb.r, primaryRgb.g, primaryRgb.b);
-    pdf.setLineWidth(1);
-    pdf.line(pageWidth / 2 - 60, 40, pageWidth / 2 + 60, 40);
-
-    // Body text
-    pdf.setTextColor(textRgb.r, textRgb.g, textRgb.b);
-    pdf.setFontSize(14);
-    pdf.setFont('helvetica', 'normal');
-    
-    const bodyText = template?.bodyText || 'Se certifica que';
-    pdf.text(bodyText, pageWidth / 2, 55, { align: 'center' });
-
-    // Participant name (highlighted)
     pdf.setTextColor(primaryRgb.r, primaryRgb.g, primaryRgb.b);
     pdf.setFontSize(28);
     pdf.setFont('helvetica', 'bold');
-    pdf.text(user.name.toUpperCase(), pageWidth / 2, 75, { align: 'center' });
+    
+    const headerText = template?.headerText || 'CERTIFICADO DE PARTICIPACIÓN';
+    pdf.text(headerText, pageWidth / 2, currentY, { align: 'center' });
+
+    // Decorative line under header
+    currentY += 5;
+    pdf.setDrawColor(primaryRgb.r, primaryRgb.g, primaryRgb.b);
+    pdf.setLineWidth(1);
+    pdf.line(pageWidth / 2 - 50, currentY, pageWidth / 2 + 50, currentY);
+
+    // Body text (wrapped)
+    currentY += 15;
+    pdf.setTextColor(textRgb.r, textRgb.g, textRgb.b);
+    pdf.setFontSize(12);
+    pdf.setFont('helvetica', 'normal');
+    
+    const bodyText = template?.bodyText || 'Se certifica que';
+    currentY = drawCenteredWrappedText(pdf, bodyText, contentWidth, currentY, 6);
+
+    // Participant name (highlighted)
+    currentY += 10;
+    pdf.setTextColor(primaryRgb.r, primaryRgb.g, primaryRgb.b);
+    pdf.setFontSize(24);
+    pdf.setFont('helvetica', 'bold');
+    pdf.text(user.name.toUpperCase(), pageWidth / 2, currentY, { align: 'center' });
 
     // Decorative line under name
+    currentY += 3;
     pdf.setDrawColor(secondaryRgb.r, secondaryRgb.g, secondaryRgb.b);
     pdf.setLineWidth(0.5);
     const nameWidth = pdf.getTextWidth(user.name.toUpperCase()) + 20;
-    pdf.line(pageWidth / 2 - nameWidth / 2, 78, pageWidth / 2 + nameWidth / 2, 78);
+    pdf.line(pageWidth / 2 - nameWidth / 2, currentY, pageWidth / 2 + nameWidth / 2, currentY);
 
     // Participation description
+    currentY += 12;
     pdf.setTextColor(textRgb.r, textRgb.g, textRgb.b);
-    pdf.setFontSize(14);
+    pdf.setFontSize(12);
     pdf.setFont('helvetica', 'normal');
     
     const participantLabel = template?.participantLabel || 'ha participado activamente en';
-    pdf.text(participantLabel, pageWidth / 2, 90, { align: 'center' });
+    currentY = drawCenteredWrappedText(pdf, participantLabel, contentWidth, currentY, 6);
 
     // Event name
+    currentY += 10;
     pdf.setTextColor(primaryRgb.r, primaryRgb.g, primaryRgb.b);
-    pdf.setFontSize(20);
+    pdf.setFontSize(18);
     pdf.setFont('helvetica', 'bold');
     const eventName = certificate.eventName || 'Fábrica de Ideas 2025';
-    pdf.text(eventName, pageWidth / 2, 105, { align: 'center' });
+    currentY = drawCenteredWrappedText(pdf, eventName, contentWidth, currentY, 7);
 
     // Activities list (if enabled and available)
+    currentY += 10;
     if (template?.showActivities !== false && activities.length > 0) {
       pdf.setTextColor(textRgb.r, textRgb.g, textRgb.b);
-      pdf.setFontSize(10);
+      pdf.setFontSize(9);
       pdf.setFont('helvetica', 'italic');
       
       const activityNames = activities.slice(0, 5).map(a => a.title).join(' • ');
-      const truncatedActivities = activityNames.length > 100 
-        ? activityNames.substring(0, 97) + '...' 
+      const truncatedActivities = activityNames.length > 120 
+        ? activityNames.substring(0, 117) + '...' 
         : activityNames;
       
-      const activityLines = wrapText(`Actividades: ${truncatedActivities}`, pageWidth - 60);
-      activityLines.forEach((line, index) => {
-        pdf.text(line, pageWidth / 2, 118 + (index * 5), { align: 'center' });
-      });
+      const activitiesText = `Actividades: ${truncatedActivities}`;
+      currentY = drawCenteredWrappedText(pdf, activitiesText, contentWidth, currentY, 5);
     }
 
     // Issue date
+    currentY += 8;
     if (template?.showDate !== false) {
       pdf.setTextColor(textRgb.r, textRgb.g, textRgb.b);
       pdf.setFontSize(10);
@@ -264,10 +294,38 @@ export async function GET(request: NextRequest) {
         month: 'long',
         year: 'numeric'
       });
-      pdf.text(`Fecha de emisión: ${formattedDate}`, pageWidth / 2, 135, { align: 'center' });
+      pdf.text(`Fecha de emisión: ${formattedDate}`, pageWidth / 2, currentY, { align: 'center' });
     }
 
-    // QR Code
+    // Organization name (centered at bottom)
+    const organizationName = template?.organizationName || 'Fábrica de Ideas';
+    
+    // Draw organization name with wrapping if needed
+    const orgY = pageHeight - 50;
+    pdf.setTextColor(textRgb.r, textRgb.g, textRgb.b);
+    pdf.setFontSize(11);
+    pdf.setFont('helvetica', 'bold');
+    
+    // Check if organization name is too long
+    const orgLines = wrapText(pdf, organizationName, 120);
+    orgLines.forEach((line, index) => {
+      pdf.text(line, pageWidth / 2, orgY + (index * 5), { align: 'center' });
+    });
+
+    // Signature line
+    const sigY = orgY + (orgLines.length * 5) + 5;
+    pdf.setDrawColor(textRgb.r, textRgb.g, textRgb.b);
+    pdf.setLineWidth(0.5);
+    pdf.line(pageWidth / 2 - 50, sigY, pageWidth / 2 + 50, sigY);
+
+    // Signature text
+    if (template?.signatureText) {
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(template.signatureText, pageWidth / 2, sigY + 5, { align: 'center' });
+    }
+
+    // QR Code (bottom left)
     if (template?.showQrCode !== false) {
       const qrCodeUrl = getQrCodeUrl(certificate.code);
       try {
@@ -278,42 +336,21 @@ export async function GET(request: NextRequest) {
           reader.onloadend = () => resolve(reader.result as string);
           reader.readAsDataURL(qrBlob);
         });
-        pdf.addImage(qrBase64, 'PNG', margin, pageHeight - 50, 30, 30);
+        pdf.addImage(qrBase64, 'PNG', margin, pageHeight - 45, 25, 25);
       } catch (e) {
         console.log('Could not load QR code');
       }
     }
 
-    // Certificate code
+    // Certificate code (below QR)
     if (template?.showCode !== false) {
       pdf.setTextColor(textRgb.r, textRgb.g, textRgb.b);
-      pdf.setFontSize(8);
+      pdf.setFontSize(7);
       pdf.setFont('helvetica', 'normal');
-      pdf.text(`Código: ${certificate.code}`, margin + 15, pageHeight - 17);
+      pdf.text(`Código: ${certificate.code}`, margin, pageHeight - 15);
     }
 
-    // Organization and signature
-    const organizationName = template?.organizationName || 'Fábrica de Ideas';
-    
-    // Right side - Organization
-    pdf.setTextColor(textRgb.r, textRgb.g, textRgb.b);
-    pdf.setFontSize(12);
-    pdf.setFont('helvetica', 'bold');
-    pdf.text(organizationName, pageWidth - margin - 50, pageHeight - 45, { align: 'center' });
-
-    // Signature line
-    pdf.setDrawColor(textRgb.r, textRgb.g, textRgb.b);
-    pdf.setLineWidth(0.5);
-    pdf.line(pageWidth - margin - 90, pageHeight - 35, pageWidth - margin - 10, pageHeight - 35);
-
-    // Signature text
-    if (template?.signatureText) {
-      pdf.setFontSize(10);
-      pdf.setFont('helvetica', 'normal');
-      pdf.text(template.signatureText, pageWidth - margin - 50, pageHeight - 28, { align: 'center' });
-    }
-
-    // Verification URL
+    // Verification URL (bottom center)
     pdf.setTextColor(100, 100, 100);
     pdf.setFontSize(7);
     pdf.text(
