@@ -141,14 +141,16 @@ export async function POST(request: NextRequest) {
     }
     
     // Check if certificate already exists for this type
-    const existingCert = await db.$queryRaw`
-      SELECT * FROM certificates 
-      WHERE userId = ${targetUserId} 
-      AND type = ${type}
-      ${eventId ? db.$queryRaw`AND eventId = ${eventId}` : db.$queryRaw``}
-    `;
+    // Use Prisma's findFirst instead of raw query to avoid SQL syntax issues
+    const existingCert = await db.certificate.findFirst({
+      where: {
+        userId: targetUserId,
+        type: type,
+        ...(eventId && { eventId: eventId }),
+      },
+    });
     
-    if ((existingCert as any[]).length > 0) {
+    if (existingCert) {
       return NextResponse.json(
         { success: false, error: 'Ya tienes un certificado de este tipo' },
         { status: 400 }

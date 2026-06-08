@@ -108,15 +108,20 @@ export async function GET(request: NextRequest) {
     const activities = activitiesResult as any[];
 
     // Get certificate template (default or event-specific)
-    const templateResult = await db.$queryRaw`
-      SELECT * FROM certificate_templates 
-      WHERE isActive = 1 
-      AND type = 'attendance'
-      AND (eventId = ${certificate.eventId} OR eventId IS NULL)
-      ORDER BY eventId DESC
-      LIMIT 1
-    `;
-    const template = (templateResult as any[])[0];
+    // Use Prisma's findFirst for better reliability
+    const template = await db.certificateTemplate.findFirst({
+      where: {
+        isActive: true,
+        type: 'attendance',
+        OR: [
+          { eventId: certificate.eventId },
+          { eventId: null }
+        ]
+      },
+      orderBy: [
+        { eventId: 'desc' } // Prefer event-specific template over default
+      ],
+    });
 
     // Create PDF document (A4 landscape: 297 x 210 mm)
     const pdf = new jsPDF({

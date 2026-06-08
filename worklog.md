@@ -650,3 +650,25 @@ Stage Summary:
 - ✅ Registro de asistencia visible en pestaña Logros
 - ✅ Requisito de 3 asistencias completas para generar certificado
 
+
+---
+Task ID: 3
+Agent: Main
+Task: Corregir descarga de certificados y verificar uso de plantilla del administrador
+
+Work Log:
+- Identificado error SQL en la verificación de certificados existentes
+- Corregida la consulta usando `db.certificate.findFirst` en lugar de raw query
+- Actualizada la API de descarga para usar `db.certificateTemplate.findFirst`
+- Probado el flujo completo con usuario Christian Coronel (3 asistencias completas)
+- Verificado que la plantilla del administrador se aplica correctamente
+
+Stage Summary:
+- ✅ Error de SQL corregido en `/api/certificates/route.ts`
+- ✅ PDF se genera y descarga correctamente
+- ✅ Plantilla del admin se aplica: "Fábrica de Ideas: De la Idea a la Acción"
+- ✅ Nombre del participante correcto: CHRISTIAN CORONEL
+- ✅ Lista de actividades incluida
+- ✅ Código de verificación y QR presentes
+- ✅ URL de verificación: verificar.fabricadeideas.com/{codigo}
+
