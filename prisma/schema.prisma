@@ -13,7 +13,7 @@ model User {
   password             String
   name                 String
   avatar               String?
-  role                 UserRole               @default("PARTICIPANT")
+  role                 UserRole               @default(PARTICIPANT)
   points               Int                    @default(0)
   level                Int                    @default(1)
   bio                  String?
@@ -140,8 +140,8 @@ model Activity {
   speakerId         String?
   title             String
   description       String?
-  type              ActivityType           @default("PRESENTATION")
-  status            ActivityStatus         @default("SCHEDULED")
+  type              ActivityType           @default(PRESENTATION)
+  status            ActivityStatus         @default(SCHEDULED)
   theme             String?
   tags              String?
   startTime         DateTime
@@ -175,7 +175,7 @@ model Project {
   videoUrl             String?
   githubUrl            String?
   websiteUrl           String?
-  status               ProjectStatus         @default("DRAFT")
+  status               ProjectStatus         @default(DRAFT)
   totalVotes           Int                   @default(0)
   averageScore         Float?
   averageEvaluation    Float?                @default(0)
@@ -206,7 +206,7 @@ model VotingConfig {
   id              String   @id @default(cuid())
   eventId         String
   name            String
-  voteType        VoteType @default("STARS")
+  voteType        VoteType @default(STARS)
   maxVotesPerUser Int      @default(3)
   startDate       DateTime
   endDate         DateTime
@@ -350,7 +350,7 @@ model Notification {
   eventId   String?
   title     String
   message   String
-  type      NotificationType @default("INFO")
+  type      NotificationType @default(INFO)
   isRead    Boolean          @default(false)
   isGlobal  Boolean          @default(false)
   actionUrl String?
