@@ -21,41 +21,36 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
   const [resultMessage, setResultMessage] = useState<string>('');
   const [resultData, setResultData] = useState<any>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
-  const [isMounted, setIsMounted] = useState(false);
+  const [scannerKey, setScannerKey] = useState(0);
   
-  const scannerRef = useRef<any>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
+  // Use refs that persist across renders
+  const scannerInstanceRef = useRef<any>(null);
+  const scannerElementRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isScanningRef = useRef(false);
+  const mountedRef = useRef(true);
 
   const canScan = userRole === 'ADMIN' || userRole === 'ORGANIZER' || userRole === 'MODERATOR' || userRole === 'EVALUATOR' || userRole === 'PARTICIPANT';
 
-  // Set mounted state
+  // Cleanup on unmount only
   useEffect(() => {
-    setIsMounted(true);
+    mountedRef.current = true;
+    
     return () => {
-      setIsMounted(false);
-      cleanupScanner();
-    };
-  }, []);
-
-  // Cleanup function
-  const cleanupScanner = useCallback(async () => {
-    if (scannerRef.current) {
-      try {
-        // Check if scanner is actually running before stopping
-        if (isScanningRef.current) {
-          await scannerRef.current.stop();
-          isScanningRef.current = false;
+      mountedRef.current = false;
+      // Cleanup scanner synchronously on unmount
+      if (scannerInstanceRef.current && isScanningRef.current) {
+        try {
+          scannerInstanceRef.current.stop().then(() => {
+            if (scannerInstanceRef.current) {
+              scannerInstanceRef.current.clear();
+            }
+          }).catch(() => {});
+        } catch (e) {
+          // Ignore errors during unmount
         }
-        // Clear the scanner
-        scannerRef.current.clear();
-      } catch (error) {
-        // Silently ignore cleanup errors
-        console.debug('Scanner cleanup:', error);
       }
-      scannerRef.current = null;
-    }
+    };
   }, []);
 
   // Process QR code via API
@@ -104,45 +99,53 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
     }
     
     setTimeout(() => {
-      setScanResult(null);
-      setResultMessage('');
-      setResultData(null);
+      if (mountedRef.current) {
+        setScanResult(null);
+        setResultMessage('');
+        setResultData(null);
+      }
     }, 4000);
   };
 
   const startScanner = async () => {
-    if (!isMounted || !containerRef.current) return;
+    if (!mountedRef.current) return;
     
     setCameraError(null);
     
     try {
-      // Clean up any existing scanner first
-      await cleanupScanner();
-      
-      // Wait for cleanup to complete
-      await new Promise(resolve => setTimeout(resolve, 100));
-      
-      if (!isMounted) return;
-      
       // Dynamically import html5-qrcode
       const { Html5Qrcode } = await import('html5-qrcode');
       
-      // Create unique ID for this scanner instance
-      const scannerId = `qr-scanner-${Date.now()}`;
+      if (!mountedRef.current) return;
       
-      // Create scanner element
-      const scannerElement = document.createElement('div');
-      scannerElement.id = scannerId;
-      scannerElement.style.width = '100%';
-      scannerElement.style.minHeight = '300px';
+      // Create a unique ID for this scanner instance
+      const scannerId = `qr-reader-${Date.now()}`;
       
-      // Clear container and add scanner element
-      containerRef.current.innerHTML = '';
-      containerRef.current.appendChild(scannerElement);
+      // Find or create the scanner container
+      let container = document.getElementById('scanner-wrapper');
+      if (!container) {
+        console.error('Scanner wrapper not found');
+        return;
+      }
+      
+      // Create a new div element that React doesn't control
+      const scannerDiv = document.createElement('div');
+      scannerDiv.id = scannerId;
+      scannerDiv.style.width = '100%';
+      scannerDiv.style.minHeight = '300px';
+      scannerDiv.style.borderRadius = '8px';
+      scannerDiv.style.overflow = 'hidden';
+      
+      // Clear any existing content
+      container.innerHTML = '';
+      container.appendChild(scannerDiv);
+      
+      // Store reference to the element we created
+      scannerElementRef.current = scannerDiv;
       
       // Create scanner instance
       const html5QrCode = new Html5Qrcode(scannerId);
-      scannerRef.current = html5QrCode;
+      scannerInstanceRef.current = html5QrCode;
       
       // Start scanning
       await html5QrCode.start(
@@ -152,7 +155,9 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
           qrbox: { width: 250, height: 250 },
         },
         (decodedText: string) => {
-          processQrCode(decodedText);
+          if (mountedRef.current) {
+            processQrCode(decodedText);
+          }
         },
         () => {
           // Ignore scan failures (no QR in view)
@@ -160,11 +165,13 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
       );
       
       isScanningRef.current = true;
-      setScanning(true);
+      if (mountedRef.current) {
+        setScanning(true);
+      }
       
     } catch (error: any) {
       console.error('Error starting scanner:', error);
-      if (isMounted) {
+      if (mountedRef.current) {
         setCameraError('No se pudo acceder a la cámara. Verifica los permisos del navegador.');
         toast.error('Error al iniciar la cámara');
       }
@@ -172,16 +179,37 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
   };
 
   const stopScanner = async () => {
-    setScanning(false);
-    await cleanupScanner();
+    if (!mountedRef.current) return;
     
-    // Clear container
-    if (containerRef.current) {
-      containerRef.current.innerHTML = '';
+    setScanning(false);
+    
+    try {
+      if (scannerInstanceRef.current && isScanningRef.current) {
+        await scannerInstanceRef.current.stop();
+        isScanningRef.current = false;
+      }
+      
+      if (scannerInstanceRef.current) {
+        scannerInstanceRef.current.clear();
+        scannerInstanceRef.current = null;
+      }
+    } catch (error) {
+      console.debug('Error stopping scanner:', error);
     }
     
-    setScanResult(null);
-    setResultMessage('');
+    // Clear the scanner container
+    const container = document.getElementById('scanner-wrapper');
+    if (container) {
+      container.innerHTML = '';
+    }
+    scannerElementRef.current = null;
+    
+    // Reset state
+    if (mountedRef.current) {
+      setScanResult(null);
+      setResultMessage('');
+      setScannerKey(prev => prev + 1);
+    }
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -193,11 +221,13 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
     try {
       const { Html5Qrcode } = await import('html5-qrcode');
       
-      // Create temporary element for file scanning
+      // Create temporary element for file scanning outside React tree
       const tempId = `temp-scanner-${Date.now()}`;
       const tempElement = document.createElement('div');
       tempElement.id = tempId;
-      tempElement.style.display = 'none';
+      tempElement.style.position = 'absolute';
+      tempElement.style.left = '-9999px';
+      tempElement.style.visibility = 'hidden';
       document.body.appendChild(tempElement);
       
       const html5QrCode = new Html5Qrcode(tempId);
@@ -213,22 +243,23 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
         } catch (e) {
           // Ignore cleanup errors
         }
-        document.body.removeChild(tempElement);
+        // Remove temp element from DOM
+        if (tempElement.parentNode) {
+          tempElement.parentNode.removeChild(tempElement);
+        }
       }
     } catch (error) {
       console.error('Error processing image:', error);
       toast.error('Error al procesar la imagen');
     } finally {
-      setProcessing(false);
+      if (mountedRef.current) {
+        setProcessing(false);
+      }
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
     }
   };
-
-  if (!isMounted) {
-    return null;
-  }
 
   return (
     <motion.div
@@ -266,11 +297,19 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
               </CardDescription>
             </CardHeader>
             <CardContent>
+              {/* Scanner container - isolated from React's DOM management */}
               <div 
-                ref={containerRef}
+                key={scannerKey}
                 className="relative bg-gray-900 rounded-lg overflow-hidden"
                 style={{ minHeight: scanning ? '300px' : '200px' }}
               >
+                {/* This div is managed by html5-qrcode, NOT React */}
+                <div 
+                  id="scanner-wrapper"
+                  suppressHydrationWarning
+                  style={{ width: '100%', minHeight: scanning ? '300px' : 'auto' }}
+                />
+                
                 {!scanning && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center text-gray-400 p-4 pointer-events-none">
                     <Camera className="w-12 h-12 mb-2" />
