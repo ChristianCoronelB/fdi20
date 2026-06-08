@@ -22,6 +22,19 @@ interface UseDataReturn<T> {
 const dataCache = new Map<string, { data: any; timestamp: number }>();
 const listeners = new Map<string, Set<() => void>>();
 
+// Global refresh callback for manual data refresh
+let globalRefreshCallback: (() => void) | null = null;
+
+export function setGlobalRefreshCallback(callback: () => void) {
+  globalRefreshCallback = callback;
+}
+
+export function triggerGlobalRefresh() {
+  if (globalRefreshCallback) {
+    globalRefreshCallback();
+  }
+}
+
 // Notify all listeners for a key
 function notifyListeners(key: string) {
   const keyListeners = listeners.get(key);
@@ -57,6 +70,9 @@ export function invalidateCache(pattern: string) {
     dataCache.delete(key);
     notifyListeners(key);
   });
+  
+  // Trigger global refresh for components not using useData hook
+  triggerGlobalRefresh();
 }
 
 // Clear all cache

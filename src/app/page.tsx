@@ -13,7 +13,7 @@ import {
   Home, Building, Presentation, Lightbulb, Vote, Shield, Moon, Sun, Lock,
   CheckCircle, Navigation, Crosshair, AlertTriangle, MapIcon
 } from 'lucide-react';
-import { invalidateCache } from '@/hooks/use-data';
+import { invalidateCache, setGlobalRefreshCallback, triggerGlobalRefresh } from '@/hooks/use-data';
 import { Maps } from '@/components/fabrica/Maps';
 import { QRScanner } from '@/components/fabrica/QRScanner';
 import { useTheme } from 'next-themes';
@@ -778,6 +778,17 @@ export default function FabricaDeIdeasApp() {
     // Load app configuration on mount
     loadAppConfig();
   }, []);
+  
+  // Register global refresh callback
+  useEffect(() => {
+    setGlobalRefreshCallback(() => {
+      loadAllData();
+    });
+    
+    return () => {
+      setGlobalRefreshCallback(() => {});
+    };
+  }, [eventsList.length, roomsList.length, activities.length]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
