@@ -37,6 +37,13 @@ export async function POST(request: NextRequest) {
       select: { points: true, level: true }
     });
 
+    // Count complete attendances for certificate eligibility
+    const completeAttendancesResult = await db.$queryRaw`
+      SELECT COUNT(*) as count FROM attendances
+      WHERE userId = ${session.userId} AND checkInTime IS NOT NULL AND checkOutTime IS NOT NULL
+    `;
+    const completeAttendances = Number((completeAttendancesResult as any[])[0]?.count || 0);
+
     // Build response data
     const responseData: any = {
       type: result.type,
@@ -44,6 +51,8 @@ export async function POST(request: NextRequest) {
       ...result.data,
       totalPoints: user?.points || 0,
       level: user?.level || 1,
+      completeAttendances,
+      canGenerateCertificate: completeAttendances >= 3,
     };
 
     // Return the result with the message

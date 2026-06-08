@@ -9927,6 +9927,96 @@ export default function FabricaDeIdeasApp() {
                       </CardContent>
                     </Card>
 
+                    {/* Attendance Record Section */}
+                    <Card>
+                      <CardHeader>
+                        <CardTitle className="flex items-center gap-2">
+                          <Calendar className="w-5 h-5 text-purple-500" />
+                          Mi Registro de Asistencia
+                        </CardTitle>
+                        <CardDescription>
+                          Registro de tus asistencias a actividades (check-in y check-out)
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="space-y-4">
+                          {/* Progress to Certificate */}
+                          <div className="flex items-center gap-4 p-4 rounded-lg bg-muted/50">
+                            <div className="flex-1">
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm font-medium">Progreso hacia el certificado</span>
+                                <span className="text-sm text-muted-foreground">{attendanceCount}/3 asistencias completas</span>
+                              </div>
+                              <Progress value={(attendanceCount / 3) * 100} className="h-2" />
+                            </div>
+                            {attendanceCount >= 3 && (
+                              <div className="flex items-center gap-1 text-emerald-500">
+                                <CheckCircle className="w-5 h-5" />
+                                <span className="text-sm font-medium">¡Listo!</span>
+                              </div>
+                            )}
+                          </div>
+
+                          {/* Attendance List */}
+                          <div className="space-y-2">
+                            {Object.keys(userAttendance).length === 0 ? (
+                              <div className="text-center py-8 text-muted-foreground">
+                                <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                                <p>Aún no tienes asistencias registradas</p>
+                                <p className="text-sm">Escanea códigos QR de actividades para registrar tu asistencia</p>
+                              </div>
+                            ) : (
+                              Object.entries(userAttendance).map(([activityId, attendance]: [string, any]) => {
+                                const activity = activities.find(a => a.id === activityId);
+                                if (!activity) return null;
+
+                                const isComplete = attendance.checkedIn && attendance.checkedOut;
+                                const isPartial = attendance.checkedIn && !attendance.checkedOut;
+
+                                return (
+                                  <div
+                                    key={activityId}
+                                    className={cn(
+                                      "flex items-center justify-between p-3 rounded-lg border",
+                                      isComplete ? "bg-emerald-50 dark:bg-emerald-950/30 border-emerald-200 dark:border-emerald-800" :
+                                      isPartial ? "bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800" :
+                                      "bg-muted/50"
+                                    )}
+                                  >
+                                    <div className="flex-1">
+                                      <p className="font-medium">{activity.title}</p>
+                                      <p className="text-sm text-muted-foreground">
+                                        {activity.room?.name || 'Sin sala'} • {formatDate(activity.startTime)}
+                                      </p>
+                                    </div>
+                                    <div className="flex items-center gap-2">
+                                      <Badge variant={attendance.checkedIn ? "default" : "outline"} className={attendance.checkedIn ? "bg-emerald-500" : ""}>
+                                        {attendance.checkedIn ? "Check-in ✓" : "Sin check-in"}
+                                      </Badge>
+                                      <Badge variant={attendance.checkedOut ? "default" : "outline"} className={attendance.checkedOut ? "bg-emerald-500" : ""}>
+                                        {attendance.checkedOut ? "Check-out ✓" : "Sin check-out"}
+                                      </Badge>
+                                    </div>
+                                  </div>
+                                );
+                              })
+                            )}
+                          </div>
+
+                          {/* Help text */}
+                          <div className="text-sm text-muted-foreground p-3 bg-blue-50 dark:bg-blue-950/30 rounded-lg">
+                            <p className="font-medium text-blue-700 dark:text-blue-400 mb-1">¿Cómo obtener tu certificado?</p>
+                            <ol className="list-decimal list-inside space-y-1 text-blue-600 dark:text-blue-300">
+                              <li>Regístrate en las actividades desde la Agenda</li>
+                              <li>Escanea el código QR al entrar (check-in)</li>
+                              <li>Escanea el código QR al salir (check-out)</li>
+                              <li>Completa 3 asistencias para desbloquear tu certificado</li>
+                            </ol>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+
                     {/* Certificate Section */}
                     <Card className="border-2 border-dashed">
                       <CardHeader>

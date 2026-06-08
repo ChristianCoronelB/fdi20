@@ -597,3 +597,32 @@ Stage Summary:
 - Location validation simplified (removed for basic QR types)
 - Better UX with clear feedback and instructions
 - Vibration feedback on successful scan for mobile devices
+
+---
+Task ID: 1
+Agent: Main
+Task: Activar y verificar módulo de certificados con registro de asistencia
+
+Work Log:
+- Revisados los componentes existentes de certificados y asistencia
+- Verificada la API de certificados (`/api/certificates`)
+- Verificada la API de asistencia (`/api/attendance`)
+- Verificada la función `scanQRCode` en `/lib/qr.ts`
+- Modificada la API de escaneo (`/api/qr/scan`) para devolver el contador de asistencias completas
+- Agregada sección "Mi Registro de Asistencia" en la pestaña Logros
+- La sección muestra:
+  - Barra de progreso hacia el certificado (0/3 asistencias)
+  - Lista de actividades con estado de check-in/check-out
+  - Instrucciones claras para obtener el certificado
+- Verificado con Agent Browser que todo funciona correctamente
+
+Stage Summary:
+- ✅ Módulo de certificados activado y funcionando
+- ✅ Registro de asistencia visible para participantes
+- ✅ Contador de asistencias completas se actualiza después del escaneo
+- ✅ Botón "Generar Certificado" correctamente deshabilitado hasta 3 asistencias
+- ✅ Instrucciones claras para el usuario
+- ✅ Login funciona con credenciales admin@fabricadeideas.com / admin123
+- ✅ Dashboard carga correctamente
+- ✅ Pestaña "Logros" accesible con todas las secciones
+
