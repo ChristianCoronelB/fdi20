@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { QrCode, Camera, CheckCircle, XCircle, Upload, Loader2 } from 'lucide-react';
+import { QrCode, Camera, CheckCircle, XCircle, AlertCircle, Upload, Loader2 } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +17,7 @@ interface QRScannerProps {
 export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
   const [scanning, setScanning] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [scanResult, setScanResult] = useState<'success' | 'error' | null>(null);
+  const [scanResult, setScanResult] = useState<'success' | 'error' | 'duplicate' | null>(null);
   const [resultMessage, setResultMessage] = useState('');
   const [resultData, setResultData] = useState<any>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -51,23 +51,31 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
       const data = await res.json();
       
       if (data.success) {
-        setScanResult('success');
-        setResultMessage(data.data?.message || '¡Escaneo exitoso!');
-        setResultData(data.data);
-        
-        invalidateCache('/api/activities');
-        invalidateCache('/api/attendance');
-        invalidateCache('/api/dashboard');
-        
-        toast.success(data.data?.message || '¡Escaneo exitoso!');
-        onScanSuccess?.(data.data);
-        
-        if (navigator.vibrate) navigator.vibrate(200);
-        
-        // Stop scanner after success
-        setTimeout(() => {
-          if (mountedRef.current && scanning) stopScanner();
-        }, 2000);
+        // Check if already scanned
+        if (data.data?.alreadyScanned) {
+          setScanResult('duplicate');
+          setResultMessage(data.data?.message || 'Este código ya fue escaneado');
+          setResultData(data.data);
+          toast.warning(data.data?.message || 'Código ya escaneado');
+        } else {
+          setScanResult('success');
+          setResultMessage(data.data?.message || '¡Escaneo exitoso!');
+          setResultData(data.data);
+          
+          invalidateCache('/api/activities');
+          invalidateCache('/api/attendance');
+          invalidateCache('/api/dashboard');
+          
+          toast.success(data.data?.message || '¡Escaneo exitoso!');
+          onScanSuccess?.(data.data);
+          
+          if (navigator.vibrate) navigator.vibrate(200);
+          
+          // Stop scanner after success
+          setTimeout(() => {
+            if (mountedRef.current && scanning) stopScanner();
+          }, 2000);
+        }
       } else {
         setScanResult('error');
         const errorMsg = data.data?.message || data.error || 'Error al procesar el código';
@@ -179,6 +187,33 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
     }
   };
 
+  const getResultStyles = () => {
+    switch (scanResult) {
+      case 'success': return 'border-green-500 bg-green-50';
+      case 'error': return 'border-red-500 bg-red-50';
+      case 'duplicate': return 'border-amber-500 bg-amber-50';
+      default: return '';
+    }
+  };
+
+  const getResultIcon = () => {
+    switch (scanResult) {
+      case 'success': return <CheckCircle className="w-8 h-8 text-green-500" />;
+      case 'error': return <XCircle className="w-8 h-8 text-red-500" />;
+      case 'duplicate': return <AlertCircle className="w-8 h-8 text-amber-500" />;
+      default: return null;
+    }
+  };
+
+  const getResultTitle = () => {
+    switch (scanResult) {
+      case 'success': return '¡Exitoso!';
+      case 'error': return 'Error';
+      case 'duplicate': return 'Ya Escaneado';
+      default: return '';
+    }
+  };
+
   if (!canScan) {
     return (
       <Card>
@@ -250,19 +285,18 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
       <AnimatePresence>
         {scanResult && (
           <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-            <Card className={`border-2 ${scanResult === 'success' ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`}>
+            <Card className={`border-2 ${getResultStyles()}`}>
               <CardContent className="p-4">
                 <div className="flex items-start gap-3">
-                  {scanResult === 'success' ? (
-                    <CheckCircle className="w-8 h-8 text-green-500" />
-                  ) : (
-                    <XCircle className="w-8 h-8 text-red-500" />
-                  )}
+                  {getResultIcon()}
                   <div>
-                    <p className="font-semibold text-lg">{scanResult === 'success' ? '¡Exitoso!' : 'Error'}</p>
+                    <p className="font-semibold text-lg">{getResultTitle()}</p>
                     <p className="text-sm text-gray-600">{resultMessage}</p>
                     {resultData?.pointsEarned > 0 && (
                       <Badge className="mt-2 bg-emerald-500">+{resultData.pointsEarned} puntos</Badge>
+                    )}
+                    {resultData?.attendanceComplete && (
+                      <Badge className="mt-2 bg-blue-500">Asistencia completa</Badge>
                     )}
                   </div>
                 </div>
@@ -277,6 +311,9 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
           <p>1. Presiona <strong>"Iniciar Cámara"</strong></p>
           <p>2. Apunta al código QR</p>
           <p>3. El escaneo es automático</p>
+          <div className="mt-2 p-2 bg-amber-50 border border-amber-200 rounded text-amber-700 text-xs">
+            <strong>Nota:</strong> Cada código QR solo puede escanearse una vez.
+          </div>
         </CardContent>
       </Card>
     </motion.div>

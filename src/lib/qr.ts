@@ -65,6 +65,21 @@ const QR_POINTS = {
   ROOM_CHECKIN: 5,
 };
 
+// Check if user already scanned this code
+async function hasScanned(code: string, userId: string): Promise<boolean> {
+  const scan = await db.qRScan.findUnique({
+    where: { code_userId: { code, userId } }
+  });
+  return !!scan;
+}
+
+// Record a scan
+async function recordScan(code: string, userId: string): Promise<void> {
+  await db.qRScan.create({
+    data: { code, userId }
+  });
+}
+
 export async function scanQRCode(code: string, userId: string): Promise<{
   success: boolean;
   type: QRType;
@@ -72,7 +87,6 @@ export async function scanQRCode(code: string, userId: string): Promise<{
     room?: { id: string; name: string };
     activity?: { id: string; title: string };
     project?: { id: string; name: string };
-    user?: { id: string; name: string };
     pointsEarned?: number;
     attendanceComplete?: boolean;
     alreadyScanned?: boolean;
@@ -80,20 +94,16 @@ export async function scanQRCode(code: string, userId: string): Promise<{
   message: string;
 }> {
   try {
-    // Parse QR code format: TYPE:id or TYPE:id:name
+    // Validate format
     if (!code || !code.includes(':')) {
-      return { 
-        success: false, 
-        type: 'ROOM', 
-        message: 'Código QR inválido' 
-      };
+      return { success: false, type: 'ROOM', message: 'Código QR inválido' };
     }
 
     const parts = code.split(':');
     const qrType = parts[0];
     const entityId = parts[1];
 
-    // Handle ACTIVITY QR codes
+    // Handle ACTIVITY QR codes (special logic for check-in/check-out)
     if (qrType === 'ACTIVITY' && entityId) {
       const activity = await db.activity.findUnique({
         where: { id: entityId },
@@ -104,7 +114,7 @@ export async function scanQRCode(code: string, userId: string): Promise<{
         return { success: false, type: 'ACTIVITY', message: 'Actividad no encontrada' };
       }
 
-      // Check if user is registered
+      // Check registration
       const registration = await db.activityRegistration.findUnique({
         where: { userId_activityId: { userId, activityId: entityId } }
       });
@@ -118,14 +128,14 @@ export async function scanQRCode(code: string, userId: string): Promise<{
       }
 
       // Check existing attendance
-      const existingAttendance = await db.attendance.findUnique({
+      const existing = await db.attendance.findUnique({
         where: { userId_activityId: { userId, activityId: entityId } }
       });
 
       const now = new Date();
 
-      // No attendance - do check-in
-      if (!existingAttendance) {
+      // No attendance = Check-in
+      if (!existing) {
         await db.attendance.create({
           data: {
             userId,
@@ -156,10 +166,10 @@ export async function scanQRCode(code: string, userId: string): Promise<{
         };
       }
 
-      // Has check-in but no check-out
-      if (existingAttendance.checkInTime && !existingAttendance.checkOutTime) {
+      // Has check-in but no check-out = Check-out
+      if (existing.checkInTime && !existing.checkOutTime) {
         await db.attendance.update({
-          where: { id: existingAttendance.id },
+          where: { id: existing.id },
           data: { 
             checkOutTime: now,
             points: { increment: QR_POINTS.ACTIVITY_CHECKOUT }
@@ -179,11 +189,11 @@ export async function scanQRCode(code: string, userId: string): Promise<{
             pointsEarned: QR_POINTS.ACTIVITY_CHECKOUT,
             attendanceComplete: true
           },
-          message: `Check-out en "${activity.title}". ¡+${QR_POINTS.ACTIVITY_CHECKOUT} puntos! Asistencia completa.`
+          message: `Check-out en "${activity.title}". ¡+${QR_POINTS.ACTIVITY_CHECKOUT} puntos!`
         };
       }
 
-      // Already completed
+      // Already completed both
       return {
         success: true,
         type: 'ACTIVITY',
@@ -193,6 +203,29 @@ export async function scanQRCode(code: string, userId: string): Promise<{
           alreadyScanned: true
         },
         message: `Ya completaste la asistencia en "${activity.title}"`
+      };
+    }
+
+    // For ROOM and PROJECT - check if already scanned
+    const alreadyScanned = await hasScanned(code, userId);
+    
+    if (alreadyScanned) {
+      // Get entity name for message
+      let entityName = 'este código';
+      
+      if (qrType === 'ROOM' && entityId) {
+        const room = await db.room.findUnique({ where: { id: entityId }, select: { name: true } });
+        if (room) entityName = `la sala "${room.name}"`;
+      } else if (qrType === 'PROJECT' && entityId) {
+        const project = await db.project.findUnique({ where: { id: entityId }, select: { name: true } });
+        if (project) entityName = `el proyecto "${project.name}"`;
+      }
+      
+      return {
+        success: true,
+        type: qrType as QRType,
+        data: { alreadyScanned: true },
+        message: `Ya has escaneado el código QR de ${entityName}.`
       };
     }
 
@@ -207,6 +240,10 @@ export async function scanQRCode(code: string, userId: string): Promise<{
         return { success: false, type: 'ROOM', message: 'Sala no encontrada' };
       }
 
+      // Record scan
+      await recordScan(code, userId);
+
+      // Award points
       await db.user.update({
         where: { id: userId },
         data: { points: { increment: QR_POINTS.ROOM_CHECKIN } }
@@ -234,6 +271,10 @@ export async function scanQRCode(code: string, userId: string): Promise<{
         return { success: false, type: 'PROJECT', message: 'Proyecto no encontrado' };
       }
 
+      // Record scan
+      await recordScan(code, userId);
+
+      // Award points
       await db.user.update({
         where: { id: userId },
         data: { points: { increment: QR_POINTS.PROJECT_VIEW } }
@@ -254,10 +295,6 @@ export async function scanQRCode(code: string, userId: string): Promise<{
 
   } catch (error) {
     console.error('Error scanning QR:', error);
-    return { 
-      success: false, 
-      type: 'ROOM', 
-      message: 'Error al procesar el código QR' 
-    };
+    return { success: false, type: 'ROOM', message: 'Error al procesar el código QR' };
   }
 }
