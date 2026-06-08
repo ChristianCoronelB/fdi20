@@ -66,6 +66,30 @@ const QR_POINTS = {
   ROOM_CHECKIN: 5,
 };
 
+// Helper function to check if user already scanned a QR code
+async function checkExistingScan(qrCodeId: string, userId: string): Promise<boolean> {
+  const existingScan = await db.qRScan.findUnique({
+    where: {
+      qrCodeId_userId: {
+        qrCodeId,
+        userId,
+      },
+    },
+  });
+  return !!existingScan;
+}
+
+// Helper function to record a scan
+async function recordScan(qrCodeId: string, userId: string, points: number): Promise<void> {
+  await db.qRScan.create({
+    data: {
+      qrCodeId,
+      userId,
+      points,
+    },
+  });
+}
+
 export async function scanQRCode(code: string, userId: string): Promise<{
   success: boolean;
   type: QRType;
@@ -76,6 +100,7 @@ export async function scanQRCode(code: string, userId: string): Promise<{
     user?: { id: string; name: string };
     pointsEarned?: number;
     attendanceComplete?: boolean;
+    alreadyScanned?: boolean;
   };
   message: string;
 }> {
@@ -96,10 +121,50 @@ export async function scanQRCode(code: string, userId: string): Promise<{
           });
 
           if (room) {
+            // Find or create a QR code record for this room
+            let qrCodeRecord = await db.qRCode.findFirst({
+              where: { roomId: room.id, type: 'ROOM' }
+            });
+
+            if (!qrCodeRecord) {
+              // Create a QR code record for tracking scans
+              qrCodeRecord = await db.qRCode.create({
+                data: {
+                  code: `ROOM:${room.id}`,
+                  type: 'ROOM',
+                  roomId: room.id,
+                }
+              });
+            }
+
+            // Check if user already scanned this room QR
+            const alreadyScanned = await checkExistingScan(qrCodeRecord.id, userId);
+            
+            if (alreadyScanned) {
+              return {
+                success: true,
+                type: 'ROOM',
+                data: {
+                  room: { id: room.id, name: room.name },
+                  alreadyScanned: true,
+                },
+                message: `Ya has escaneado el código QR de la sala "${room.name}" anteriormente.`,
+              };
+            }
+
+            // Record the scan
+            await recordScan(qrCodeRecord.id, userId, QR_POINTS.ROOM_CHECKIN);
+
             // Award points for room check-in
             await db.user.update({
               where: { id: userId },
               data: { points: { increment: QR_POINTS.ROOM_CHECKIN } }
+            });
+
+            // Update scan count
+            await db.qRCode.update({
+              where: { id: qrCodeRecord.id },
+              data: { scanCount: { increment: 1 } }
             });
 
             return {
@@ -158,6 +223,21 @@ export async function scanQRCode(code: string, userId: string): Promise<{
               }
             });
 
+            // Find or create a QR code record for this activity
+            let qrCodeRecord = await db.qRCode.findFirst({
+              where: { activityId: activity.id, type: 'ACTIVITY' }
+            });
+
+            if (!qrCodeRecord) {
+              qrCodeRecord = await db.qRCode.create({
+                data: {
+                  code: `ACTIVITY:${activity.id}`,
+                  type: 'ACTIVITY',
+                  activityId: activity.id,
+                }
+              });
+            }
+
             let pointsEarned = 0;
             let message = '';
             let attendanceComplete = false;
@@ -172,6 +252,9 @@ export async function scanQRCode(code: string, userId: string): Promise<{
                   points: QR_POINTS.ACTIVITY_CHECKIN,
                 }
               });
+              
+              // Record the scan for check-in
+              await recordScan(qrCodeRecord.id, userId, QR_POINTS.ACTIVITY_CHECKIN);
               
               pointsEarned = QR_POINTS.ACTIVITY_CHECKIN;
               message = `Check-in registrado en "${activity.title}". ¡+${pointsEarned} puntos!`;
@@ -193,6 +276,31 @@ export async function scanQRCode(code: string, userId: string): Promise<{
                 }
               });
               
+              // Check if user already scanned for checkout
+              const alreadyScannedCheckout = await db.qRScan.findFirst({
+                where: {
+                  qrCodeId: qrCodeRecord.id,
+                  userId: userId,
+                  points: QR_POINTS.ACTIVITY_CHECKOUT + 5,
+                }
+              });
+
+              if (alreadyScannedCheckout) {
+                return {
+                  success: true,
+                  type: 'ACTIVITY',
+                  data: {
+                    activity: { id: activity.id, title: activity.title },
+                    attendanceComplete: true,
+                    alreadyScanned: true,
+                  },
+                  message: 'Ya completaste la asistencia a esta actividad.',
+                };
+              }
+
+              // Record the scan for check-out
+              await recordScan(qrCodeRecord.id, userId, totalPointsForCheckout);
+              
               pointsEarned = totalPointsForCheckout;
               attendanceComplete = true;
               message = `Check-out registrado en "${activity.title}". ¡+${pointsEarned} puntos! Asistencia completa.`;
@@ -203,8 +311,9 @@ export async function scanQRCode(code: string, userId: string): Promise<{
                 data: {
                   activity: { id: activity.id, title: activity.title },
                   attendanceComplete: true,
+                  alreadyScanned: true,
                 },
-                message: 'Ya completaste la asistencia a esta actividad',
+                message: 'Ya completaste la asistencia a esta actividad.',
               };
             }
 
@@ -213,6 +322,12 @@ export async function scanQRCode(code: string, userId: string): Promise<{
               await db.user.update({
                 where: { id: userId },
                 data: { points: { increment: pointsEarned } }
+              });
+
+              // Update scan count
+              await db.qRCode.update({
+                where: { id: qrCodeRecord.id },
+                data: { scanCount: { increment: 1 } }
               });
             }
 
@@ -242,9 +357,49 @@ export async function scanQRCode(code: string, userId: string): Promise<{
           });
 
           if (project) {
+            // Find or create a QR code record for this project
+            let qrCodeRecord = await db.qRCode.findFirst({
+              where: { projectId: project.id, type: 'PROJECT' }
+            });
+
+            if (!qrCodeRecord) {
+              qrCodeRecord = await db.qRCode.create({
+                data: {
+                  code: `PROJECT:${project.id}`,
+                  type: 'PROJECT',
+                  projectId: project.id,
+                }
+              });
+            }
+
+            // Check if user already scanned this project QR
+            const alreadyScanned = await checkExistingScan(qrCodeRecord.id, userId);
+            
+            if (alreadyScanned) {
+              return {
+                success: true,
+                type: 'PROJECT',
+                data: {
+                  project: { id: project.id, name: project.name },
+                  alreadyScanned: true,
+                },
+                message: `Ya has escaneado el código QR del proyecto "${project.name}" anteriormente.`,
+              };
+            }
+
+            // Record the scan
+            await recordScan(qrCodeRecord.id, userId, QR_POINTS.PROJECT_VIEW);
+
+            // Award points
             await db.user.update({
               where: { id: userId },
               data: { points: { increment: QR_POINTS.PROJECT_VIEW } }
+            });
+
+            // Update scan count
+            await db.qRCode.update({
+              where: { id: qrCodeRecord.id },
+              data: { scanCount: { increment: 1 } }
             });
 
             return {
@@ -284,6 +439,33 @@ export async function scanQRCode(code: string, userId: string): Promise<{
 
     if (qrCode.expiresAt && qrCode.expiresAt < new Date()) {
       return { success: false, type: qrCode.type, message: 'Código QR expirado' };
+    }
+
+    // Check if user already scanned this QR code (except for ACTIVITY which has its own logic)
+    if (qrCode.type !== 'ACTIVITY') {
+      const alreadyScanned = await checkExistingScan(qrCode.id, userId);
+      
+      if (alreadyScanned) {
+        let entityName = '';
+        if (qrCode.type === 'ROOM' && qrCode.room) {
+          entityName = `la sala "${qrCode.room.name}"`;
+        } else if (qrCode.type === 'PROJECT' && qrCode.project) {
+          entityName = `el proyecto "${qrCode.project.name}"`;
+        } else {
+          entityName = 'este código';
+        }
+        
+        return {
+          success: true,
+          type: qrCode.type,
+          data: {
+            room: qrCode.room ? { id: qrCode.room.id, name: qrCode.room.name } : undefined,
+            project: qrCode.project ? { id: qrCode.project.id, name: qrCode.project.name } : undefined,
+            alreadyScanned: true,
+          },
+          message: `Ya has escaneado el código QR de ${entityName} anteriormente.`,
+        };
+      }
     }
 
     // Increment scan count
@@ -341,6 +523,9 @@ export async function scanQRCode(code: string, userId: string): Promise<{
               }
             });
             
+            // Record the scan for check-in
+            await recordScan(qrCode.id, userId, QR_POINTS.ACTIVITY_CHECKIN);
+            
             pointsEarned = QR_POINTS.ACTIVITY_CHECKIN;
             message = `Check-in registrado en "${qrCode.activity.title}". ¡+${pointsEarned} puntos!`;
 
@@ -361,6 +546,9 @@ export async function scanQRCode(code: string, userId: string): Promise<{
               }
             });
             
+            // Record the scan for check-out
+            await recordScan(qrCode.id, userId, totalPointsForCheckout);
+            
             pointsEarned = totalPointsForCheckout;
             attendanceComplete = true;
             message = `Check-out registrado en "${qrCode.activity.title}". ¡+${pointsEarned} puntos! Asistencia completa.`;
@@ -374,8 +562,9 @@ export async function scanQRCode(code: string, userId: string): Promise<{
                   title: qrCode.activity.title,
                 },
                 attendanceComplete: true,
+                alreadyScanned: true,
               },
-              message: 'Ya completaste la asistencia a esta actividad',
+              message: 'Ya completaste la asistencia a esta actividad.',
             };
           }
 
@@ -404,6 +593,9 @@ export async function scanQRCode(code: string, userId: string): Promise<{
         break;
 
       case 'PROJECT':
+        // Record the scan
+        await recordScan(qrCode.id, userId, QR_POINTS.PROJECT_VIEW);
+
         // Award points for viewing project
         await db.user.update({
           where: { id: userId },
@@ -421,6 +613,9 @@ export async function scanQRCode(code: string, userId: string): Promise<{
         };
 
       case 'ROOM':
+        // Record the scan
+        await recordScan(qrCode.id, userId, QR_POINTS.ROOM_CHECKIN);
+
         // Award points for room check-in
         await db.user.update({
           where: { id: userId },

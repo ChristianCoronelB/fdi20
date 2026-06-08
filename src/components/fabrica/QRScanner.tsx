@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { QrCode, Camera, CheckCircle, XCircle, Upload, Loader2 } from 'lucide-react';
+import { QrCode, Camera, CheckCircle, XCircle, Upload, Loader2, AlertCircle, RepeatIcon } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -17,7 +17,7 @@ interface QRScannerProps {
 export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
   const [scanning, setScanning] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [scanResult, setScanResult] = useState<'success' | 'error' | null>(null);
+  const [scanResult, setScanResult] = useState<'success' | 'error' | 'duplicate' | null>(null);
   const [resultMessage, setResultMessage] = useState<string>('');
   const [resultData, setResultData] = useState<any>(null);
   const [cameraError, setCameraError] = useState<string | null>(null);
@@ -29,6 +29,9 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isScanningRef = useRef(false);
   const mountedRef = useRef(true);
+  
+  // Track scanned codes in this session to prevent duplicate scans
+  const scannedCodesRef = useRef<Set<string>>(new Set());
 
   const canScan = userRole === 'ADMIN' || userRole === 'ORGANIZER' || userRole === 'MODERATOR' || userRole === 'EVALUATOR' || userRole === 'PARTICIPANT';
 
@@ -57,7 +60,15 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
   const processQrCode = async (decodedText: string) => {
     if (processing) return;
     
+    // Check if this code was already scanned in this session
+    if (scannedCodesRef.current.has(decodedText)) {
+      // Already scanned in this session, ignore
+      return;
+    }
+    
+    // Mark as processing and add to scanned set
     setProcessing(true);
+    scannedCodesRef.current.add(decodedText);
     
     try {
       const res = await fetch('/api/qr/scan', {
@@ -69,42 +80,71 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
       const data = await res.json();
       
       if (data.success) {
-        setScanResult('success');
-        setResultMessage(data.data?.message || '¡Escaneo exitoso!');
-        setResultData(data.data);
-        
-        invalidateCache('/api/activities');
-        invalidateCache('/api/attendance');
-        invalidateCache('/api/achievements');
-        invalidateCache('/api/dashboard');
-        
-        toast.success(data.data?.message || '¡Escaneo exitoso!');
-        onScanSuccess?.(data.data);
-        
-        if (navigator.vibrate) {
-          navigator.vibrate(200);
+        // Check if this was already scanned before (server-side check)
+        if (data.data?.alreadyScanned) {
+          setScanResult('duplicate');
+          setResultMessage(data.data?.message || 'Este código ya fue escaneado anteriormente');
+          setResultData(data.data);
+          
+          toast.warning(data.data?.message || 'Código ya escaneado');
+          
+          // Light vibration pattern for duplicate
+          if (navigator.vibrate) {
+            navigator.vibrate([100, 50, 100]);
+          }
+        } else {
+          setScanResult('success');
+          setResultMessage(data.data?.message || '¡Escaneo exitoso!');
+          setResultData(data.data);
+          
+          invalidateCache('/api/activities');
+          invalidateCache('/api/attendance');
+          invalidateCache('/api/achievements');
+          invalidateCache('/api/dashboard');
+          
+          toast.success(data.data?.message || '¡Escaneo exitoso!');
+          onScanSuccess?.(data.data);
+          
+          // Success vibration
+          if (navigator.vibrate) {
+            navigator.vibrate(200);
+          }
+          
+          // Stop scanner after successful scan to prevent accidental re-scans
+          setTimeout(() => {
+            if (mountedRef.current && isScanningRef.current) {
+              stopScanner();
+            }
+          }, 2000);
         }
       } else {
         setScanResult('error');
         setResultMessage(data.error || 'Error al procesar el código QR');
         toast.error(data.error || 'Error al procesar el código QR');
+        
+        // Remove from scanned set on error so user can retry
+        scannedCodesRef.current.delete(decodedText);
       }
     } catch (error) {
       console.error('Error processing scan:', error);
       setScanResult('error');
       setResultMessage('Error de conexión. Intenta de nuevo.');
       toast.error('Error de conexión');
+      
+      // Remove from scanned set on error so user can retry
+      scannedCodesRef.current.delete(decodedText);
     } finally {
       setProcessing(false);
     }
     
+    // Clear result after delay
     setTimeout(() => {
       if (mountedRef.current) {
         setScanResult(null);
         setResultMessage('');
         setResultData(null);
       }
-    }, 4000);
+    }, 5000);
   };
 
   const startScanner = async () => {
@@ -147,6 +187,9 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
       const html5QrCode = new Html5Qrcode(scannerId);
       scannerInstanceRef.current = html5QrCode;
       
+      // Debounce flag to prevent multiple rapid scans
+      let isProcessingScan = false;
+      
       // Start scanning
       await html5QrCode.start(
         { facingMode: 'environment' },
@@ -154,10 +197,20 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
           fps: 10,
           qrbox: { width: 250, height: 250 },
         },
-        (decodedText: string) => {
+        async (decodedText: string) => {
+          // Prevent multiple rapid scans
+          if (isProcessingScan || processing) return;
+          
+          isProcessingScan = true;
+          
           if (mountedRef.current) {
-            processQrCode(decodedText);
+            await processQrCode(decodedText);
           }
+          
+          // Reset processing flag after a delay
+          setTimeout(() => {
+            isProcessingScan = false;
+          }, 3000);
         },
         () => {
           // Ignore scan failures (no QR in view)
@@ -258,6 +311,46 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
       if (fileInputRef.current) {
         fileInputRef.current.value = '';
       }
+    }
+  };
+
+  // Get result card styling based on result type
+  const getResultStyles = () => {
+    switch (scanResult) {
+      case 'success':
+        return 'border-green-500 bg-green-50';
+      case 'error':
+        return 'border-red-500 bg-red-50';
+      case 'duplicate':
+        return 'border-amber-500 bg-amber-50';
+      default:
+        return '';
+    }
+  };
+
+  const getResultIcon = () => {
+    switch (scanResult) {
+      case 'success':
+        return <CheckCircle className="w-8 h-8 text-green-500 flex-shrink-0" />;
+      case 'error':
+        return <XCircle className="w-8 h-8 text-red-500 flex-shrink-0" />;
+      case 'duplicate':
+        return <AlertCircle className="w-8 h-8 text-amber-500 flex-shrink-0" />;
+      default:
+        return null;
+    }
+  };
+
+  const getResultTitle = () => {
+    switch (scanResult) {
+      case 'success':
+        return '¡Escaneo Exitoso!';
+      case 'error':
+        return 'Error';
+      case 'duplicate':
+        return 'Código Ya Escaneado';
+      default:
+        return '';
     }
   };
 
@@ -373,22 +466,23 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -20 }}
               >
-                <Card className={`border-2 ${scanResult === 'success' ? 'border-green-500 bg-green-50' : 'border-red-500 bg-red-50'}`}>
+                <Card className={`border-2 ${getResultStyles()}`}>
                   <CardContent className="p-4">
                     <div className="flex items-start gap-3">
-                      {scanResult === 'success' ? (
-                        <CheckCircle className="w-8 h-8 text-green-500 flex-shrink-0" />
-                      ) : (
-                        <XCircle className="w-8 h-8 text-red-500 flex-shrink-0" />
-                      )}
+                      {getResultIcon()}
                       <div>
                         <p className="font-semibold text-lg">
-                          {scanResult === 'success' ? '¡Escaneo Exitoso!' : 'Error'}
+                          {getResultTitle()}
                         </p>
                         <p className="text-sm text-gray-600">{resultMessage}</p>
                         {resultData?.pointsEarned && resultData.pointsEarned > 0 && (
                           <Badge className="mt-2 bg-emerald-500">
                             +{resultData.pointsEarned} puntos
+                          </Badge>
+                        )}
+                        {scanResult === 'duplicate' && resultData?.attendanceComplete && (
+                          <Badge className="mt-2 bg-amber-500">
+                            Asistencia completada
                           </Badge>
                         )}
                       </div>
@@ -408,6 +502,12 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
               <p>1. Presiona <strong>"Iniciar Cámara"</strong></p>
               <p>2. Apunta al código QR</p>
               <p>3. El escaneo es automático</p>
+              <div className="mt-3 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                <p className="text-amber-700 text-xs flex items-center gap-1">
+                  <AlertCircle className="w-3 h-3" />
+                  <strong>Importante:</strong> Cada código QR solo puede escanearse una vez
+                </p>
+              </div>
               <p className="text-gray-400 text-xs mt-2">
                 También puedes subir una imagen con un código QR
               </p>

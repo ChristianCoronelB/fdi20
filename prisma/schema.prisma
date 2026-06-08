@@ -47,6 +47,7 @@ model User {
   notifications Notification[]
   achievements  UserAchievement[]
   qrCodes       QRCode[]
+  qrScans       QRScan[]
   certificates  Certificate[]
   createdEvents Event[]         @relation("EventCreator")
   sessions      Session[]
@@ -433,8 +434,26 @@ model QRCode {
   room        Room?    @relation(fields: [roomId], references: [id], onDelete: Cascade)
   activity    Activity? @relation(fields: [activityId], references: [id], onDelete: Cascade)
   project     Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  scans       QRScan[]
   
   @@map("qr_codes")
+}
+
+// Registro de escaneos de QR por usuario
+model QRScan {
+  id          String   @id @default(cuid())
+  qrCodeId    String
+  userId      String
+  scannedAt   DateTime @default(now())
+  points      Int      @default(0)
+  
+  // Relations
+  qrCode      QRCode   @relation(fields: [qrCodeId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Un usuario solo puede escanear un código una vez
+  @@unique([qrCodeId, userId])
+  @@map("qr_scans")
 }
 
 // ==================== NOTIFICATIONS ====================
