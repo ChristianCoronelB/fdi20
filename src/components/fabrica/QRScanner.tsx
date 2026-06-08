@@ -119,8 +119,10 @@ export function QRScanner({ userRole, onScanSuccess }: QRScannerProps) {
         }
       } else {
         setScanResult('error');
-        setResultMessage(data.error || 'Error al procesar el código QR');
-        toast.error(data.error || 'Error al procesar el código QR');
+        // API returns error message in data.data.message or data.error
+        const errorMessage = data.data?.message || data.error || 'Error al procesar el código QR';
+        setResultMessage(errorMessage);
+        toast.error(errorMessage);
         
         // Remove from scanned set on error so user can retry
         scannedCodesRef.current.delete(decodedText);
